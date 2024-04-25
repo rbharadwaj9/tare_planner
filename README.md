@@ -17,31 +17,32 @@ To setup TARE Planner, clone the repository.
 ```
 git clone https://github.com/caochao39/tare_planner.git
 ```
-In a terminal, go to the folder and compile.
+In a terminal, go to the folder, checkout the 'humble' branch, and compile.
 
 ```
 cd tare_planner
-catkin_make
+git checkout humble
+colcon build --symlink-install --cmake-args -DCMAKE_BUILD_TYPE=Release
 ```
 To run the code, go to the development environment folder in a terminal, source the ROS workspace, and launch.
 ```
-source devel/setup.sh
-roslaunch vehicle_simulator system_garage.launch
+source install/setup.sh
+ros2 launch vehicle_simulator system_garage.launch
 ```
 In another terminal, go to the TARE Planner folder, source the ROS workspace, and launch.
 ```
-source devel/setup.sh
-roslaunch tare_planner explore_garage.launch
+source install/setup.sh
+ros2 launch tare_planner explore_garage.launch
 ```
 Now, users should see autonomous exploration in action. To launch with a different environment, use the command lines below instead and replace '\<environment\>' with one of the environment names in the development environment, i.e. 'campus', 'indoor', 'garage', 'tunnel', and 'forest'.
 ```
-roslaunch vehicle_simulator system_<environment>.launch
-roslaunch tare_planner explore_<environment>.launch
+ros2 launch vehicle_simulator system_<environment>.launch
+ros2 launch tare_planner explore_<environment>.launch
 ```
 To run TARE Planner in a [Matterport3D](https://niessner.github.io/Matterport) environment, follow instructions on the development environment page to setup the Matterport3D environment. Then, use the command lines below to launch the system and TARE Planner.
-```bash
-roslaunch vehicle_simulator system_matterport.launch
-roslaunch tare_planner explore_matterport.launch
+```
+ros2 launch vehicle_simulator system_matterport.launch
+ros2 launch tare_planner explore_matterport.launch
 ```
 
 ## Publications
