@@ -1,4 +1,4 @@
-// Copyright 2010-2018 Google LLC
+// Copyright 2010-2022 Google LLC
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -168,6 +168,7 @@
 //    the arc tail array adds another m * sizeof(NodeIndexType).
 
 #include <algorithm>
+#include <cstdint>
 #include <limits>
 #include <memory>
 #include <string>
@@ -175,9 +176,8 @@
 #include <vector>
 
 #include "absl/strings/str_cat.h"
-#include "ortools/base/integral_types.h"
 #include "ortools/base/logging.h"
-#include "ortools/base/macros.h"
+#include "ortools/base/types.h"
 #include "ortools/util/permutation.h"
 #include "ortools/util/zvector.h"
 
@@ -197,10 +197,10 @@ class ForwardStaticGraph;
 // ForwardStarGraph according to whether or not they require reverse arcs to be
 // represented explicitly. Along with either graph representation, the other
 // type shortcuts here will often come in handy.
-typedef int32 NodeIndex;
-typedef int32 ArcIndex;
-typedef int64 FlowQuantity;
-typedef int64 CostValue;
+typedef int32_t NodeIndex;
+typedef int32_t ArcIndex;
+typedef int64_t FlowQuantity;
+typedef int64_t CostValue;
 typedef EbertGraph<NodeIndex, ArcIndex> StarGraph;
 typedef ForwardEbertGraph<NodeIndex, ArcIndex> ForwardStarGraph;
 typedef ForwardStaticGraph<NodeIndex, ArcIndex> ForwardStarStaticGraph;
@@ -303,7 +303,7 @@ class StarGraphBase {
     if (node == kNilNode) {
       return "NilNode";
     } else {
-      return absl::StrCat(static_cast<int64>(node));
+      return absl::StrCat(static_cast<int64_t>(node));
     }
   }
 
@@ -311,7 +311,7 @@ class StarGraphBase {
     if (arc == kNilArc) {
       return "NilArc";
     } else {
-      return absl::StrCat(static_cast<int64>(arc));
+      return absl::StrCat(static_cast<int64_t>(arc));
     }
   }
 
@@ -578,6 +578,11 @@ class ForwardStaticGraph
         : ArrayIndexCycleHandler<NodeIndexType, ArcIndexType>(&data[kFirstArc]),
           annotation_handler_(annotation_handler) {}
 
+    // This type is neither copyable nor movable.
+    CycleHandlerForAnnotatedArcs(const CycleHandlerForAnnotatedArcs&) = delete;
+    CycleHandlerForAnnotatedArcs& operator=(
+        const CycleHandlerForAnnotatedArcs&) = delete;
+
     void SetTempFromIndex(ArcIndexType source) override {
       Base::SetTempFromIndex(source);
       annotation_handler_->SetTempFromIndex(source);
@@ -596,8 +601,6 @@ class ForwardStaticGraph
 
    private:
     PermutationCycleHandler<ArcIndexType>* annotation_handler_;
-
-    DISALLOW_COPY_AND_ASSIGN(CycleHandlerForAnnotatedArcs);
   };
 #endif  // SWIG
 
@@ -797,7 +800,7 @@ class ForwardStaticGraph
     }
   }
 
-  // Returns a debug std::string containing all the information contained in the
+  // Returns a debug string containing all the information contained in the
   // data structure in raw form.
   std::string DebugString() const {
     std::string result = "Arcs:(node) :\n";
@@ -1004,7 +1007,7 @@ class EbertGraphBase
       return kNilArc;
     }
     if (tail + 1 > num_nodes_) {
-      num_nodes_ = tail + 1;  // max does not work on int16.
+      num_nodes_ = tail + 1;  // max does not work on int16_t.
     }
     if (head + 1 > num_nodes_) {
       num_nodes_ = head + 1;
@@ -1055,6 +1058,11 @@ class EbertGraphBase
           head_temp_(kNilNode),
           tail_temp_(kNilNode) {}
 
+    // This type is neither copyable nor movable.
+    CycleHandlerForAnnotatedArcs(const CycleHandlerForAnnotatedArcs&) = delete;
+    CycleHandlerForAnnotatedArcs& operator=(
+        const CycleHandlerForAnnotatedArcs&) = delete;
+
     void SetTempFromIndex(ArcIndexType source) override {
       if (annotation_handler_ != nullptr) {
         annotation_handler_->SetTempFromIndex(source);
@@ -1099,8 +1107,6 @@ class EbertGraphBase
     DerivedGraph* graph_;
     NodeIndexType head_temp_;
     NodeIndexType tail_temp_;
-
-    DISALLOW_COPY_AND_ASSIGN(CycleHandlerForAnnotatedArcs);
   };
 #endif  // SWIG
 
@@ -1112,8 +1118,8 @@ class EbertGraphBase
   void Initialize(NodeIndexType max_num_nodes, ArcIndexType max_num_arcs) {
     if (!Reserve(max_num_nodes, max_num_arcs)) {
       LOG(DFATAL) << "Could not reserve memory for "
-                  << static_cast<int64>(max_num_nodes) << " nodes and "
-                  << static_cast<int64>(max_num_arcs) << " arcs.";
+                  << static_cast<int64_t>(max_num_nodes) << " nodes and "
+                  << static_cast<int64_t>(max_num_arcs) << " arcs.";
     }
     first_incident_arc_.SetAll(kNilArc);
     ThisAsDerived()->InitializeInternal(max_num_nodes, max_num_arcs);
@@ -1180,8 +1186,8 @@ class EbertGraphBase
   }
 };
 
-// Most users should only use StarGraph, which is EbertGraph<int32, int32>, and
-// other type shortcuts; see the bottom of this file.
+// Most users should only use StarGraph, which is EbertGraph<int32_t, int32_t>,
+// and other type shortcuts; see the bottom of this file.
 template <typename NodeIndexType, typename ArcIndexType>
 class EbertGraph
     : public EbertGraphBase<NodeIndexType, ArcIndexType,
@@ -1404,7 +1410,7 @@ class EbertGraph
     return std::min(arc, Opposite(arc));
   }
 
-  // Returns the opposite arc, i.e the direct arc is the arc is in reverse
+  // Returns the opposite arc, i.e. the direct arc is the arc is in reverse
   // direction, and the reverse arc if the arc is direct.
   ArcIndexType Opposite(const ArcIndexType arc) const {
     const ArcIndexType opposite = ~arc;
@@ -1453,7 +1459,7 @@ class EbertGraph
     representation_clean_ = true;
   }
 
-  // Returns a debug std::string containing all the information contained in the
+  // Returns a debug string containing all the information contained in the
   // data structure in raw form.
   std::string DebugString() const {
     DCHECK(representation_clean_);
@@ -1693,7 +1699,7 @@ class ForwardEbertGraph
     return true;
   }
 
-  // Returns a debug std::string containing all the information contained in the
+  // Returns a debug string containing all the information contained in the
   // data structure in raw form.
   std::string DebugString() const {
     DCHECK(representation_clean_);
@@ -1846,20 +1852,20 @@ class ForwardEbertGraph
 // get errors from tests rather than incomplete testing.
 template <typename GraphType>
 struct graph_traits {
-  static const bool has_reverse_arcs = true;
-  static const bool is_dynamic = true;
+  static constexpr bool has_reverse_arcs = true;
+  static constexpr bool is_dynamic = true;
 };
 
 template <typename NodeIndexType, typename ArcIndexType>
 struct graph_traits<ForwardEbertGraph<NodeIndexType, ArcIndexType> > {
-  static const bool has_reverse_arcs = false;
-  static const bool is_dynamic = true;
+  static constexpr bool has_reverse_arcs = false;
+  static constexpr bool is_dynamic = true;
 };
 
 template <typename NodeIndexType, typename ArcIndexType>
 struct graph_traits<ForwardStaticGraph<NodeIndexType, ArcIndexType> > {
-  static const bool has_reverse_arcs = false;
-  static const bool is_dynamic = false;
+  static constexpr bool has_reverse_arcs = false;
+  static constexpr bool is_dynamic = false;
 };
 
 namespace or_internal {

@@ -1,4 +1,4 @@
-// Copyright 2010-2018 Google LLC
+// Copyright 2010-2022 Google LLC
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -24,53 +24,50 @@
 #ifndef OR_TOOLS_LP_DATA_MPS_READER_H_
 #define OR_TOOLS_LP_DATA_MPS_READER_H_
 
-#include <limits>
-#include <memory>
-#include <set>
 #include <string>
-#include <vector>
 
-#include "absl/container/flat_hash_map.h"
-#include "absl/container/flat_hash_set.h"
-#include "absl/strings/numbers.h"
-#include "absl/strings/str_cat.h"
-#include "absl/strings/str_split.h"
-#include "ortools/base/protobuf_util.h"
-#include "ortools/base/canonical_errors.h"
-#include "ortools/base/commandlineflags.h"
-#include "ortools/base/filelineiter.h"
-#include "ortools/base/hash.h"
-#include "ortools/base/int_type.h"
-#include "ortools/base/int_type_indexed_vector.h"
-#include "ortools/base/logging.h"
-#include "ortools/base/macros.h"  // for DISALLOW_COPY_AND_ASSIGN, NULL
-#include "ortools/base/map_util.h"
-#include "ortools/base/status.h"
-#include "ortools/base/status_macros.h"
-#include "ortools/base/statusor.h"
+#include "absl/base/attributes.h"
+#include "absl/status/status.h"
+#include "absl/status/statusor.h"
+#include "absl/strings/string_view.h"
 #include "ortools/linear_solver/linear_solver.pb.h"
 #include "ortools/lp_data/lp_data.h"
-#include "ortools/lp_data/lp_types.h"
 
 namespace operations_research {
 namespace glop {
 
+// Parses an MPS model from a string.
+absl::StatusOr<MPModelProto> MpsDataToMPModelProto(absl::string_view mps_data);
+
+// Parses an MPS model from a file.
+absl::StatusOr<MPModelProto> MpsFileToMPModelProto(absl::string_view mps_file);
+
+// Implementation class. Please use the 2 functions above.
+//
 // Reads a linear program in the mps format.
 //
 // All Parse() methods clear the previously parsed instance and store the result
-// in the given Data class. They return false in case of failure to read the
-// instance.
-
-class MPSReader {
+// in the given Data class.
+//
+// TODO(user): Remove the MPSReader class.
+class ABSL_DEPRECATED("Use the direct methods instead") MPSReader {
  public:
   enum Form { AUTO_DETECT, FREE, FIXED };
 
   // Parses instance from a file.
-  util::Status ParseFile(const std::string& file_name, LinearProgram* data,
+  absl::Status ParseFile(absl::string_view file_name, LinearProgram* data,
                          Form form = AUTO_DETECT);
 
-  util::Status ParseFile(const std::string& file_name, MPModelProto* data,
+  absl::Status ParseFile(absl::string_view file_name, MPModelProto* data,
                          Form form = AUTO_DETECT);
+  // Loads instance from string. Useful with MapReduce. Automatically detects
+  // the file's format (free or fixed).
+  absl::Status ParseProblemFromString(absl::string_view source,
+                                      LinearProgram* data,
+                                      MPSReader::Form form = AUTO_DETECT);
+  absl::Status ParseProblemFromString(absl::string_view source,
+                                      MPModelProto* data,
+                                      MPSReader::Form form = AUTO_DETECT);
 };
 
 }  // namespace glop

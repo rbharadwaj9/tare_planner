@@ -1,4 +1,4 @@
-// Copyright 2010-2018 Google LLC
+// Copyright 2010-2022 Google LLC
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -25,21 +25,22 @@
 #define OR_TOOLS_LP_DATA_LP_DATA_H_
 
 #include <algorithm>  // for max
+#include <cmath>
+#include <cstdint>
 #include <map>
-#include <string>  // for std::string
+#include <string>  // for string
 #include <vector>  // for vector
 
 #include "absl/container/flat_hash_map.h"
 #include "absl/container/flat_hash_set.h"
+#include "absl/strings/string_view.h"
 #include "ortools/base/hash.h"
-#include "ortools/base/int_type.h"
-#include "ortools/base/int_type_indexed_vector.h"
 #include "ortools/base/logging.h"  // for CHECK*
-#include "ortools/base/macros.h"   // for DISALLOW_COPY_AND_ASSIGN, NULL
 #include "ortools/glop/parameters.pb.h"
 #include "ortools/lp_data/lp_types.h"
 #include "ortools/lp_data/sparse.h"
 #include "ortools/util/fp_utils.h"
+#include "ortools/util/strong_integers.h"
 
 namespace operations_research {
 namespace glop {
@@ -67,11 +68,15 @@ class LinearProgram {
 
   LinearProgram();
 
+  // This type is neither copyable nor movable.
+  LinearProgram(const LinearProgram&) = delete;
+  LinearProgram& operator=(const LinearProgram&) = delete;
+
   // Clears, i.e. reset the object to its initial value.
   void Clear();
 
   // Name setter and getter.
-  void SetName(const std::string& name) { name_ = name; }
+  void SetName(absl::string_view name) { name_ = name; }
   const std::string& name() const { return name_; }
 
   // Creates a new variable and returns its index.
@@ -108,8 +113,8 @@ class LinearProgram {
   // FindOrCreate{Variable|Constraint}().
   // TODO(user): Add PopulateIdsFromNames() so names added via
   // Set{Variable|Constraint}Name() can be found.
-  void SetVariableName(ColIndex col, const std::string& name);
-  void SetConstraintName(RowIndex row, const std::string& name);
+  void SetVariableName(ColIndex col, absl::string_view name);
+  void SetConstraintName(RowIndex row, absl::string_view name);
 
   // Set the type of the variable.
   void SetVariableType(ColIndex col, VariableType type);
@@ -180,7 +185,7 @@ class LinearProgram {
   // modifying the matrix does not change the result of any function in this
   // class until UseTransposeMatrixAsReference() is called. This is because the
   // transpose matrix is only used by GetTransposeSparseMatrix() and this
-  // function will recompute the whole tranpose from the matrix. In particular,
+  // function will recompute the whole transpose from the matrix. In particular,
   // do not call GetTransposeSparseMatrix() while you modify the matrix returned
   // by GetMutableTransposeSparseMatrix() otherwise all your changes will be
   // lost.
@@ -234,7 +239,7 @@ class LinearProgram {
   }
 
   // Returns a row vector of VariableType representing types of variables.
-  const StrictITIVector<ColIndex, VariableType> variable_types() const {
+  StrictITIVector<ColIndex, VariableType> variable_types() const {
     return variable_types_;
   }
 
@@ -292,22 +297,23 @@ class LinearProgram {
   Fractional ApplyObjectiveScalingAndOffset(Fractional value) const;
   Fractional RemoveObjectiveScalingAndOffset(Fractional value) const;
 
-  // A short std::string with the problem dimension.
+  // A short string with the problem dimension.
   std::string GetDimensionString() const;
 
-  // A short line with some stats on the objective coefficients.
+  // A short line with some stats on the problem coefficients.
   std::string GetObjectiveStatsString() const;
+  std::string GetBoundsStatsString() const;
 
   // Returns a stringified LinearProgram. We use the LP file format used by
   // lp_solve (see http://lpsolve.sourceforge.net/5.1/index.htm).
   std::string Dump() const;
 
-  // Returns a std::string that contains the provided solution of the LP in the
+  // Returns a string that contains the provided solution of the LP in the
   // format var1 = X, var2 = Y, var3 = Z, ...
   std::string DumpSolution(const DenseRow& variable_values) const;
 
-  // Returns a comma-separated std::string of integers containing (in that
-  // order) num_constraints_, num_variables_in_file_, num_entries_,
+  // Returns a comma-separated string of integers containing (in that order)
+  // num_constraints_, num_variables_in_file_, num_entries_,
   // num_objective_non_zeros_, num_rhs_non_zeros_, num_less_than_constraints_,
   // num_greater_than_constraints_, num_equal_constraints_,
   // num_range_constraints_, num_non_negative_variables_, num_boxed_variables_,
@@ -315,8 +321,8 @@ class LinearProgram {
   // Very useful for reporting in the way used in journal articles.
   std::string GetProblemStats() const;
 
-  // Returns a std::string containing the same information as with
-  // GetProblemStats(), but in a much more human-readable form, for example:
+  // Returns a string containing the same information as with GetProblemStats(),
+  // but in a much more human-readable form, for example:
   //      Number of rows                               : 27
   //      Number of variables in file                  : 32
   //      Number of entries (non-zeros)                : 83
@@ -333,7 +339,7 @@ class LinearProgram {
   //      Number of other variables                    : 0
   std::string GetPrettyProblemStats() const;
 
-  // Returns a comma-separated std::string of numbers containing (in that order)
+  // Returns a comma-separated string of numbers containing (in that order)
   // fill rate, max number of entries (length) in a row, average row length,
   // standard deviation of row length, max column length, average column length,
   // standard deviation of column length
@@ -343,8 +349,8 @@ class LinearProgram {
   // moved to SparseMatrix.
   std::string GetNonZeroStats() const;
 
-  // Returns a std::string containing the same information as with
-  // GetNonZeroStats(), but in a much more human-readable form, for example:
+  // Returns a string containing the same information as with GetNonZeroStats(),
+  // but in a much more human-readable form, for example:
   //      Fill rate                                    : 9.61%
   //      Entries in row (Max / average / std, dev.)   : 9 / 3.07 / 1.94
   //      Entries in column (Max / average / std, dev.): 4 / 2.59 / 0.96
@@ -496,7 +502,7 @@ class LinearProgram {
   //   multiplying the new ones by the returned factor.
   // - For ScaleBounds(), the old variable and constraint bounds can be
   //   retrieved by multiplying the new ones by the returned factor.
-  Fractional ScaleObjective();
+  Fractional ScaleObjective(GlopParameters::CostScalingAlgorithm method);
   Fractional ScaleBounds();
 
   // Removes the given row indices from the LinearProgram.
@@ -508,7 +514,10 @@ class LinearProgram {
   // - returns false if some coefficient other than the bounds are +/- infinity.
   // Note that these conditions are also guarded by DCHECK on each of the
   // SetXXX() function above.
-  bool IsValid() const;
+  //
+  // This also returns false if any finite value has a magnitude larger than
+  // the given threshold.
+  bool IsValid(Fractional max_valid_magnitude = kInfinity) const;
 
   // Updates the bounds of the variables to the intersection of their original
   // bounds and the bounds specified by variable_lower_bounds and
@@ -544,6 +553,15 @@ class LinearProgram {
   // If true, checks bound validity in debug mode.
   void SetDcheckBounds(bool dcheck_bounds) { dcheck_bounds_ = dcheck_bounds; }
 
+  // In our presolve, the calls and the extra test inside SetConstraintBounds()
+  // can be visible when a lot of substitutions are performed.
+  DenseColumn* mutable_constraint_lower_bounds() {
+    return &constraint_lower_bounds_;
+  }
+  DenseColumn* mutable_constraint_upper_bounds() {
+    return &constraint_upper_bounds_;
+  }
+
  private:
   // A helper function that updates the vectors integer_variables_list_,
   // binary_variables_list_, and non_binary_variables_list_.
@@ -551,11 +569,11 @@ class LinearProgram {
 
   // A helper function to format problem statistics. Used by GetProblemStats()
   // and GetPrettyProblemStats().
-  std::string ProblemStatFormatter(const absl::string_view format) const;
+  std::string ProblemStatFormatter(absl::string_view format) const;
 
   // A helper function to format non-zero statistics. Used by GetNonZeroStats()
   // and GetPrettyNonZeroStats().
-  std::string NonZeroStatFormatter(const absl::string_view format) const;
+  std::string NonZeroStatFormatter(absl::string_view format) const;
 
   // Resizes all row vectors to include index 'row'.
   void ResizeRowsIfNeeded(RowIndex row);
@@ -570,7 +588,7 @@ class LinearProgram {
   SparseMatrix matrix_;
 
   // The transpose of matrix_. This will be lazily recomputed by
-  // GetTransposeSparseMatrix() if tranpose_matrix_is_consistent_ is false.
+  // GetTransposeSparseMatrix() if transpose_matrix_is_consistent_ is false.
   mutable SparseMatrix transpose_matrix_;
 
   // Constraint related quantities.
@@ -636,8 +654,6 @@ class LinearProgram {
 
   friend void Scale(LinearProgram* lp, SparseMatrixScaler* scaler,
                     GlopParameters::ScalingAlgorithm scaling_method);
-
-  DISALLOW_COPY_AND_ASSIGN(LinearProgram);
 };
 
 // --------------------------------------------------------

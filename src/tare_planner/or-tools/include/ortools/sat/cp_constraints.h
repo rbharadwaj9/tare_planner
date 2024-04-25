@@ -1,4 +1,4 @@
-// Copyright 2010-2018 Google LLC
+// Copyright 2010-2022 Google LLC
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -14,18 +14,20 @@
 #ifndef OR_TOOLS_SAT_CP_CONSTRAINTS_H_
 #define OR_TOOLS_SAT_CP_CONSTRAINTS_H_
 
+#include <cstdint>
 #include <functional>
 #include <memory>
 #include <vector>
 
-#include "ortools/base/int_type.h"
-#include "ortools/base/integral_types.h"
+#include "absl/log/check.h"
+#include "absl/types/span.h"
 #include "ortools/base/logging.h"
-#include "ortools/base/macros.h"
+#include "ortools/base/types.h"
 #include "ortools/sat/integer.h"
 #include "ortools/sat/model.h"
 #include "ortools/sat/sat_base.h"
 #include "ortools/util/rev.h"
+#include "ortools/util/strong_integers.h"
 
 namespace operations_research {
 namespace sat {
@@ -44,6 +46,10 @@ class BooleanXorPropagator : public PropagatorInterface {
         trail_(trail),
         integer_trail_(integer_trail) {}
 
+  // This type is neither copyable nor movable.
+  BooleanXorPropagator(const BooleanXorPropagator&) = delete;
+  BooleanXorPropagator& operator=(const BooleanXorPropagator&) = delete;
+
   bool Propagate() final;
   void RegisterWith(GenericLiteralWatcher* watcher);
 
@@ -53,8 +59,6 @@ class BooleanXorPropagator : public PropagatorInterface {
   std::vector<Literal> literal_reason_;
   Trail* trail_;
   IntegerTrail* integer_trail_;
-
-  DISALLOW_COPY_AND_ASSIGN(BooleanXorPropagator);
 };
 
 // If we have:
@@ -69,19 +73,24 @@ class BooleanXorPropagator : public PropagatorInterface {
 // This constraint support duplicate selectors.
 class GreaterThanAtLeastOneOfPropagator : public PropagatorInterface {
  public:
-  GreaterThanAtLeastOneOfPropagator(
-      IntegerVariable target_var, const absl::Span<const IntegerVariable> vars,
-      const absl::Span<const IntegerValue> offsets,
-      const absl::Span<const Literal> selectors,
-      const absl::Span<const Literal> enforcements, Model* model);
+  GreaterThanAtLeastOneOfPropagator(IntegerVariable target_var,
+                                    absl::Span<const AffineExpression> exprs,
+                                    absl::Span<const Literal> selectors,
+                                    absl::Span<const Literal> enforcements,
+                                    Model* model);
+
+  // This type is neither copyable nor movable.
+  GreaterThanAtLeastOneOfPropagator(const GreaterThanAtLeastOneOfPropagator&) =
+      delete;
+  GreaterThanAtLeastOneOfPropagator& operator=(
+      const GreaterThanAtLeastOneOfPropagator&) = delete;
 
   bool Propagate() final;
   void RegisterWith(GenericLiteralWatcher* watcher);
 
  private:
   const IntegerVariable target_var_;
-  const std::vector<IntegerVariable> vars_;
-  const std::vector<IntegerValue> offsets_;
+  const std::vector<AffineExpression> exprs_;
   const std::vector<Literal> selectors_;
   const std::vector<Literal> enforcements_;
 
@@ -90,8 +99,6 @@ class GreaterThanAtLeastOneOfPropagator : public PropagatorInterface {
 
   std::vector<Literal> literal_reason_;
   std::vector<IntegerLiteral> integer_reason_;
-
-  DISALLOW_COPY_AND_ASSIGN(GreaterThanAtLeastOneOfPropagator);
 };
 
 // ============================================================================
@@ -99,7 +106,7 @@ class GreaterThanAtLeastOneOfPropagator : public PropagatorInterface {
 // ============================================================================
 
 inline std::vector<IntegerValue> ToIntegerValueVector(
-    const std::vector<int64>& input) {
+    const std::vector<int64_t>& input) {
   std::vector<IntegerValue> result(input.size());
   for (int i = 0; i < input.size(); ++i) {
     result[i] = IntegerValue(input[i]);
@@ -123,25 +130,16 @@ inline std::function<void(Model*)> LiteralXorIs(
 inline std::function<void(Model*)> GreaterThanAtLeastOneOf(
     IntegerVariable target_var, const absl::Span<const IntegerVariable> vars,
     const absl::Span<const IntegerValue> offsets,
-    const absl::Span<const Literal> selectors) {
-  return [=](Model* model) {
-    GreaterThanAtLeastOneOfPropagator* constraint =
-        new GreaterThanAtLeastOneOfPropagator(target_var, vars, offsets,
-                                              selectors, {}, model);
-    constraint->RegisterWith(model->GetOrCreate<GenericLiteralWatcher>());
-    model->TakeOwnership(constraint);
-  };
-}
-
-inline std::function<void(Model*)> GreaterThanAtLeastOneOf(
-    IntegerVariable target_var, const absl::Span<const IntegerVariable> vars,
-    const absl::Span<const IntegerValue> offsets,
     const absl::Span<const Literal> selectors,
     const absl::Span<const Literal> enforcements) {
   return [=](Model* model) {
+    std::vector<AffineExpression> exprs;
+    for (int i = 0; i < vars.size(); ++i) {
+      exprs.push_back(AffineExpression(vars[i], 1, offsets[i]));
+    }
     GreaterThanAtLeastOneOfPropagator* constraint =
-        new GreaterThanAtLeastOneOfPropagator(target_var, vars, offsets,
-                                              selectors, enforcements, model);
+        new GreaterThanAtLeastOneOfPropagator(target_var, exprs, selectors,
+                                              enforcements, model);
     constraint->RegisterWith(model->GetOrCreate<GenericLiteralWatcher>());
     model->TakeOwnership(constraint);
   };
@@ -164,12 +162,13 @@ inline std::function<void(Model*)> PartialIsOneOfVar(
     const std::vector<IntegerValue> offsets(vars.size(), IntegerValue(0));
     if (vars.size() > 2) {
       // Propagate the min.
-      model->Add(GreaterThanAtLeastOneOf(target_var, vars, offsets, selectors));
+      model->Add(
+          GreaterThanAtLeastOneOf(target_var, vars, offsets, selectors, {}));
     }
     if (vars.size() > 2) {
       // Propagate the max.
-      model->Add(GreaterThanAtLeastOneOf(NegationOf(target_var),
-                                         NegationOf(vars), offsets, selectors));
+      model->Add(GreaterThanAtLeastOneOf(
+          NegationOf(target_var), NegationOf(vars), offsets, selectors, {}));
     }
   };
 }

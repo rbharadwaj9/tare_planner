@@ -1,4 +1,4 @@
-// Copyright 2010-2018 Google LLC
+// Copyright 2010-2022 Google LLC
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -27,17 +27,30 @@
 #ifndef OR_TOOLS_BOP_BOP_LS_H_
 #define OR_TOOLS_BOP_BOP_LS_H_
 
+#include <stddef.h>
+
 #include <array>
+#include <cstdint>
+#include <memory>
+#include <string>
+#include <vector>
 
 #include "absl/container/flat_hash_map.h"
 #include "absl/container/flat_hash_set.h"
-#include "ortools/base/hash.h"
-#include "ortools/base/random.h"
+#include "absl/random/bit_gen_ref.h"
+#include "absl/random/random.h"
+#include "absl/strings/string_view.h"
+#include "ortools/base/macros.h"
+#include "ortools/base/strong_vector.h"
 #include "ortools/bop/bop_base.h"
+#include "ortools/bop/bop_parameters.pb.h"
 #include "ortools/bop/bop_solution.h"
 #include "ortools/bop/bop_types.h"
 #include "ortools/sat/boolean_problem.pb.h"
+#include "ortools/sat/sat_base.h"
 #include "ortools/sat/sat_solver.h"
+#include "ortools/util/strong_integers.h"
+#include "ortools/util/time_limit.h"
 
 namespace operations_research {
 namespace bop {
@@ -49,6 +62,10 @@ namespace bop {
 class SatWrapper {
  public:
   explicit SatWrapper(sat::SatSolver* sat_solver);
+
+  // This type is neither copyable nor movable.
+  SatWrapper(const SatWrapper&) = delete;
+  SatWrapper& operator=(const SatWrapper&) = delete;
 
   // Returns the current state of the solver propagation trail.
   std::vector<sat::Literal> FullSatTrail() const;
@@ -94,7 +111,6 @@ class SatWrapper {
 
  private:
   sat::SatSolver* sat_solver_;
-  DISALLOW_COPY_AND_ASSIGN(SatWrapper);
 };
 
 // Forward declaration.
@@ -112,8 +128,8 @@ class LocalSearchAssignmentIterator;
 // in the new solution can be greater than max_num_decisions.
 class LocalSearchOptimizer : public BopOptimizerBase {
  public:
-  LocalSearchOptimizer(const std::string& name, int max_num_decisions,
-                       sat::SatSolver* sat_propagator);
+  LocalSearchOptimizer(absl::string_view name, int max_num_decisions,
+                       absl::BitGenRef random, sat::SatSolver* sat_propagator);
   ~LocalSearchOptimizer() override;
 
  private:
@@ -122,7 +138,7 @@ class LocalSearchOptimizer : public BopOptimizerBase {
                   const ProblemState& problem_state, LearnedInfo* learned_info,
                   TimeLimit* time_limit) override;
 
-  int64 state_update_stamp_;
+  int64_t state_update_stamp_;
 
   // Maximum number of decisions the Local Search can take.
   // Note that there is no limit on the number of changed variables due to
@@ -137,6 +153,9 @@ class LocalSearchOptimizer : public BopOptimizerBase {
   // the iterator continues its iteration of the next assignments each time
   // Optimize() is called until everything is explored or a solution is found.
   std::unique_ptr<LocalSearchAssignmentIterator> assignment_iterator_;
+
+  // Random generator.
+  absl::BitGenRef random_;
 };
 
 //------------------------------------------------------------------------------
@@ -154,7 +173,7 @@ class LocalSearchOptimizer : public BopOptimizerBase {
 template <typename IntType>
 class BacktrackableIntegerSet {
  public:
-  BacktrackableIntegerSet() {}
+  BacktrackableIntegerSet() = default;
 
   // Prepares the class for integers in [0, n) and initializes the set to the
   // empty one. Note that this run in O(n). Once resized, it is better to call
@@ -198,13 +217,13 @@ class BacktrackableIntegerSet {
 template <typename IntType>
 class NonOrderedSetHasher {
  public:
-  NonOrderedSetHasher() : random_("Random seed") {}
+  explicit NonOrderedSetHasher(absl::BitGenRef random) : random_(random) {}
 
   // Initializes the NonOrderedSetHasher to hash sets of integer in [0, n).
   void Initialize(int size) {
     hashes_.resize(size);
     for (IntType i(0); i < size; ++i) {
-      hashes_[i] = random_.Rand64();
+      hashes_[i] = absl::Uniform<uint64_t>(random_);
     }
   }
 
@@ -215,22 +234,22 @@ class NonOrderedSetHasher {
   // Returns the hash of the given set. The hash is independent of the set
   // order, but there must be no duplicate element in the set. This uses a
   // simple random linear function which has really good hashing properties.
-  uint64 Hash(const std::vector<IntType>& set) const {
-    uint64 hash = 0;
+  uint64_t Hash(const std::vector<IntType>& set) const {
+    uint64_t hash = 0;
     for (const IntType i : set) hash ^= hashes_[i];
     return hash;
   }
 
   // The hash of a set is simply the XOR of all its elements. This allows
-  // to compute an hash incrementally or without the need of a std::vector<>.
-  uint64 Hash(IntType e) const { return hashes_[e]; }
+  // to compute an hash incrementally or without the need of a vector<>.
+  uint64_t Hash(IntType e) const { return hashes_[e]; }
 
   // Returns true if Initialize() has been called with a non-zero size.
   bool IsInitialized() const { return !hashes_.empty(); }
 
  private:
-  MTRandom random_;
-  gtl::ITIVector<IntType, uint64> hashes_;
+  absl::BitGenRef random_;
+  absl::StrongVector<IntType, uint64_t> hashes_;
 };
 
 // This class is used to incrementally maintain an assignment and the
@@ -263,7 +282,13 @@ class AssignmentAndConstraintFeasibilityMaintainer {
   // Note that the constraint indices used in this class are not the same as
   // the one used in the given LinearBooleanProblem here.
   explicit AssignmentAndConstraintFeasibilityMaintainer(
-      const LinearBooleanProblem& problem);
+      const sat::LinearBooleanProblem& problem, absl::BitGenRef random);
+
+  // This type is neither copyable nor movable.
+  AssignmentAndConstraintFeasibilityMaintainer(
+      const AssignmentAndConstraintFeasibilityMaintainer&) = delete;
+  AssignmentAndConstraintFeasibilityMaintainer& operator=(
+      const AssignmentAndConstraintFeasibilityMaintainer&) = delete;
 
   // When we construct the problem, we treat the objective as one constraint.
   // This is the index of this special "objective" constraint.
@@ -335,25 +360,25 @@ class AssignmentAndConstraintFeasibilityMaintainer {
   const BopSolution& reference() const { return reference_; }
 
   // Returns the lower bound of the constraint.
-  int64 ConstraintLowerBound(ConstraintIndex constraint) const {
+  int64_t ConstraintLowerBound(ConstraintIndex constraint) const {
     return constraint_lower_bounds_[constraint];
   }
 
   // Returns the upper bound of the constraint.
-  int64 ConstraintUpperBound(ConstraintIndex constraint) const {
+  int64_t ConstraintUpperBound(ConstraintIndex constraint) const {
     return constraint_upper_bounds_[constraint];
   }
 
   // Returns the value of the constraint. The value is computed using the
   // variable values in the assignment. Note that a constraint is feasible iff
   // its value is between its two bounds (inclusive).
-  int64 ConstraintValue(ConstraintIndex constraint) const {
+  int64_t ConstraintValue(ConstraintIndex constraint) const {
     return constraint_values_[constraint];
   }
 
   // Returns true if the given constraint is currently feasible.
   bool ConstraintIsFeasible(ConstraintIndex constraint) const {
-    const int64 value = ConstraintValue(constraint);
+    const int64_t value = ConstraintValue(constraint);
     return value >= ConstraintLowerBound(constraint) &&
            value <= ConstraintUpperBound(constraint);
   }
@@ -369,7 +394,7 @@ class AssignmentAndConstraintFeasibilityMaintainer {
   // constraint infeasible. An "up" direction means that the constraint activity
   // is lower than the lower bound and we need to make the activity move up to
   // fix the infeasibility.
-  DEFINE_INT_TYPE(ConstraintIndexWithDirection, int32);
+  DEFINE_STRONG_INDEX_TYPE(ConstraintIndexWithDirection);
   ConstraintIndexWithDirection FromConstraintIndex(ConstraintIndex index,
                                                    bool up) const {
     return ConstraintIndexWithDirection(2 * index.value() + (up ? 1 : 0));
@@ -380,22 +405,23 @@ class AssignmentAndConstraintFeasibilityMaintainer {
   void MakeObjectiveConstraintInfeasible(int delta);
 
   // Local structure to represent the sparse matrix by variable used for fast
-  // update of the contraint values.
+  // update of the constraint values.
   struct ConstraintEntry {
-    ConstraintEntry(ConstraintIndex c, int64 w) : constraint(c), weight(w) {}
+    ConstraintEntry(ConstraintIndex c, int64_t w) : constraint(c), weight(w) {}
     ConstraintIndex constraint;
-    int64 weight;
+    int64_t weight;
   };
 
-  gtl::ITIVector<VariableIndex, gtl::ITIVector<EntryIndex, ConstraintEntry>>
+  absl::StrongVector<VariableIndex,
+                     absl::StrongVector<EntryIndex, ConstraintEntry>>
       by_variable_matrix_;
-  gtl::ITIVector<ConstraintIndex, int64> constraint_lower_bounds_;
-  gtl::ITIVector<ConstraintIndex, int64> constraint_upper_bounds_;
+  absl::StrongVector<ConstraintIndex, int64_t> constraint_lower_bounds_;
+  absl::StrongVector<ConstraintIndex, int64_t> constraint_upper_bounds_;
 
   BopSolution assignment_;
   BopSolution reference_;
 
-  gtl::ITIVector<ConstraintIndex, int64> constraint_values_;
+  absl::StrongVector<ConstraintIndex, int64_t> constraint_values_;
   BacktrackableIntegerSet<ConstraintIndex> infeasible_constraint_set_;
 
   // This contains the list of variable flipped in assignment_.
@@ -407,10 +433,8 @@ class AssignmentAndConstraintFeasibilityMaintainer {
   // Members used by PotentialOneFlipRepairs().
   std::vector<sat::Literal> tmp_potential_repairs_;
   NonOrderedSetHasher<ConstraintIndexWithDirection> constraint_set_hasher_;
-  absl::flat_hash_map<uint64, std::vector<sat::Literal>>
+  absl::flat_hash_map<uint64_t, std::vector<sat::Literal>>
       hash_to_potential_repairs_;
-
-  DISALLOW_COPY_AND_ASSIGN(AssignmentAndConstraintFeasibilityMaintainer);
 };
 
 // This class is an utility class used to select which infeasible constraint to
@@ -434,9 +458,14 @@ class OneFlipConstraintRepairer {
   // TODO(user): maybe merge the two classes? maintaining this implicit indices
   // convention between the two classes sounds like a bad idea.
   OneFlipConstraintRepairer(
-      const LinearBooleanProblem& problem,
+      const sat::LinearBooleanProblem& problem,
       const AssignmentAndConstraintFeasibilityMaintainer& maintainer,
       const sat::VariablesAssignment& sat_assignment);
+
+  // This type is neither copyable nor movable.
+  OneFlipConstraintRepairer(const OneFlipConstraintRepairer&) = delete;
+  OneFlipConstraintRepairer& operator=(const OneFlipConstraintRepairer&) =
+      delete;
 
   static const ConstraintIndex kInvalidConstraint;
   static const TermIndex kInitTerm;
@@ -474,9 +503,9 @@ class OneFlipConstraintRepairer {
   // Local structure to represent the sparse matrix by constraint used for fast
   // lookups.
   struct ConstraintTerm {
-    ConstraintTerm(VariableIndex v, int64 w) : var(v), weight(w) {}
+    ConstraintTerm(VariableIndex v, int64_t w) : var(v), weight(w) {}
     VariableIndex var;
-    int64 weight;
+    int64_t weight;
   };
 
  private:
@@ -484,12 +513,11 @@ class OneFlipConstraintRepairer {
   // on most promising variables first.
   void SortTermsOfEachConstraints(int num_variables);
 
-  gtl::ITIVector<ConstraintIndex, gtl::ITIVector<TermIndex, ConstraintTerm>>
+  absl::StrongVector<ConstraintIndex,
+                     absl::StrongVector<TermIndex, ConstraintTerm>>
       by_constraint_matrix_;
   const AssignmentAndConstraintFeasibilityMaintainer& maintainer_;
   const sat::VariablesAssignment& sat_assignment_;
-
-  DISALLOW_COPY_AND_ASSIGN(OneFlipConstraintRepairer);
 };
 
 // This class is used to iterate on all assignments that can be obtained by
@@ -502,7 +530,14 @@ class LocalSearchAssignmentIterator {
   LocalSearchAssignmentIterator(const ProblemState& problem_state,
                                 int max_num_decisions,
                                 int max_num_broken_constraints,
+                                absl::BitGenRef random,
                                 SatWrapper* sat_wrapper);
+
+  // This type is neither copyable nor movable.
+  LocalSearchAssignmentIterator(const LocalSearchAssignmentIterator&) = delete;
+  LocalSearchAssignmentIterator& operator=(
+      const LocalSearchAssignmentIterator&) = delete;
+
   ~LocalSearchAssignmentIterator();
 
   // Parameters of the LS algorithm.
@@ -548,7 +583,7 @@ class LocalSearchAssignmentIterator {
   void UseCurrentStateAsReference();
 
   // See transposition_table_ below.
-  static const size_t kStoredMaxDecisions = 4;
+  static constexpr size_t kStoredMaxDecisions = 4;
 
   // Internal structure used to represent a node of the search tree during local
   // search.
@@ -581,7 +616,7 @@ class LocalSearchAssignmentIterator {
   // Initializes the given array with the current decisions in search_nodes_ and
   // by filling the other positions with 0.
   void InitializeTranspositionTableKey(
-      std::array<int32, kStoredMaxDecisions>* a);
+      std::array<int32_t, kStoredMaxDecisions>* a);
 
   // Looks for the next repairing term in the given constraints while skipping
   // the position already present in transposition_table_. A given TermIndex of
@@ -596,14 +631,14 @@ class LocalSearchAssignmentIterator {
   SatWrapper* const sat_wrapper_;
   OneFlipConstraintRepairer repairer_;
   std::vector<SearchNode> search_nodes_;
-  gtl::ITIVector<ConstraintIndex, TermIndex> initial_term_index_;
+  absl::StrongVector<ConstraintIndex, TermIndex> initial_term_index_;
 
   // Temporary vector used by ApplyDecision().
   std::vector<sat::Literal> tmp_propagated_literals_;
 
   // For each set of explored decisions, we store it in this table so that we
   // don't explore decisions (a, b) and later (b, a) for instance. The decisions
-  // are converted to int32, sorted and padded with 0 before beeing inserted
+  // are converted to int32_t, sorted and padded with 0 before beeing inserted
   // here.
   //
   // TODO(user): We may still miss some equivalent states because it is possible
@@ -615,24 +650,22 @@ class LocalSearchAssignmentIterator {
   // Ideally, this should be related to the maximum number of decision in the
   // LS, but that requires templating the whole LS optimizer.
   bool use_transposition_table_;
-  absl::flat_hash_set<std::array<int32, kStoredMaxDecisions>>
+  absl::flat_hash_set<std::array<int32_t, kStoredMaxDecisions>>
       transposition_table_;
 
   bool use_potential_one_flip_repairs_;
 
   // The number of explored nodes.
-  int64 num_nodes_;
+  int64_t num_nodes_;
 
   // The number of skipped nodes thanks to the transposition table.
-  int64 num_skipped_nodes_;
+  int64_t num_skipped_nodes_;
 
   // The overall number of better solution found. And the ones found by the
   // use_potential_one_flip_repairs_ heuristic.
-  int64 num_improvements_;
-  int64 num_improvements_by_one_flip_repairs_;
-  int64 num_inspected_one_flip_repairs_;
-
-  DISALLOW_COPY_AND_ASSIGN(LocalSearchAssignmentIterator);
+  int64_t num_improvements_;
+  int64_t num_improvements_by_one_flip_repairs_;
+  int64_t num_inspected_one_flip_repairs_;
 };
 
 }  // namespace bop

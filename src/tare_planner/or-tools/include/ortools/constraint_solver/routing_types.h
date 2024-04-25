@@ -1,4 +1,4 @@
-// Copyright 2010-2018 Google LLC
+// Copyright 2010-2022 Google LLC
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -14,35 +14,39 @@
 #ifndef OR_TOOLS_CONSTRAINT_SOLVER_ROUTING_TYPES_H_
 #define OR_TOOLS_CONSTRAINT_SOLVER_ROUTING_TYPES_H_
 
+#include <cstdint>
 #include <functional>
 #include <utility>
 #include <vector>
 
 #include "ortools/base/int_type.h"
-#include "ortools/base/integral_types.h"
 
 namespace operations_research {
 
-// Defining common types used in the routing library outside the main
-// RoutingModel class has several purposes:
-// 1) It allows some small libraries to avoid a dependency on routing.{h,cc},
-//    eg. routing_neighborhoods.h.
-// 2) It allows an easier wrapping via SWIG, which can have issues with
-//    intra-class types.
-//
-// Users that depend on routing.{h,cc} should just use the
-// RoutingModel:: equivalent, eg. RoutingModel::NodeIndex.
+/// Defining common types used in the routing library outside the main
+/// RoutingModel class has several purposes:
+/// 1) It allows some small libraries to avoid a dependency on routing.{h,cc},
+///    eg. routing_neighborhoods.h.
+/// 2) It allows an easier wrapping via SWIG, which can have issues with
+///    intra-class types.
+///
+/// Users that depend on routing.{h,cc} should just use the
+/// RoutingModel:: equivalent, eg. RoutingModel::NodeIndex.
 DEFINE_INT_TYPE(RoutingNodeIndex, int);
 DEFINE_INT_TYPE(RoutingCostClassIndex, int);
 DEFINE_INT_TYPE(RoutingDimensionIndex, int);
 DEFINE_INT_TYPE(RoutingDisjunctionIndex, int);
 DEFINE_INT_TYPE(RoutingVehicleClassIndex, int);
 
-typedef std::function<int64(int64)> RoutingTransitCallback1;
-typedef std::function<int64(int64, int64)> RoutingTransitCallback2;
-// NOTE(user): keep the "> >" for SWIG.
-typedef std::pair<std::vector<int64>, std::vector<int64> > RoutingIndexPair;
-typedef std::vector<RoutingIndexPair> RoutingIndexPairs;
+/// Pickup and delivery pair representation, including alternatives for pickups
+/// and deliveries respectively.
+struct PickupDeliveryPair {
+  std::vector<int64_t> pickup_alternatives;
+  std::vector<int64_t> delivery_alternatives;
+};
+
+typedef std::function<int64_t(int64_t)> RoutingTransitCallback1;
+typedef std::function<int64_t(int64_t, int64_t)> RoutingTransitCallback2;
 
 }  // namespace operations_research
 

@@ -1,4 +1,4 @@
-// Copyright 2010-2018 Google LLC
+// Copyright 2010-2022 Google LLC
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -17,13 +17,18 @@
 #define UTIL_GRAPH_UTIL_H_
 
 #include <algorithm>
+#include <cstdint>
 #include <map>
 #include <memory>
 #include <set>
 #include <string>
-#include <unordered_map>
+#include <utility>
 #include <vector>
 
+#include "absl/container/btree_map.h"
+#include "absl/container/flat_hash_map.h"
+#include "absl/container/inlined_vector.h"
+#include "absl/types/span.h"
 #include "ortools/base/hash.h"
 #include "ortools/base/map_util.h"
 #include "ortools/graph/connected_components.h"
@@ -81,7 +86,7 @@ std::unique_ptr<Graph> RemapGraph(const Graph& graph,
 // be done in O(num new nodes + num new arcs) but with a higher constant.
 template <class Graph>
 std::unique_ptr<Graph> GetSubgraphOfNodes(const Graph& graph,
-                                          const std::vector<int>& nodes);
+                                          absl::Span<const int> nodes);
 
 // This can be used to view a directed graph (that supports reverse arcs)
 // from graph.h as un undirected graph: operator[](node) returns a
@@ -127,7 +132,7 @@ class UndirectedAdjacencyListsOfDirectedGraph {
 
 // Computes the weakly connected components of a directed graph that
 // provides the OutgoingOrOppositeIncomingArcs() API, and returns them
-// as a mapping from node to component index. See GetConnectedComponens().
+// as a mapping from node to component index. See GetConnectedComponents().
 template <class Graph>
 std::vector<int> GetWeaklyConnectedComponents(const Graph& graph) {
   return GetConnectedComponents(
@@ -137,7 +142,7 @@ std::vector<int> GetWeaklyConnectedComponents(const Graph& graph) {
 // Returns true iff the given vector is a subset of [0..n-1], i.e.
 // all elements i are such that 0 <= i < n and no two elements are equal.
 // "n" must be >= 0 or the result is undefined.
-bool IsSubsetOf0N(const std::vector<int>& v, int n);
+bool IsSubsetOf0N(absl::Span<const int> v, int n);
 
 // Returns true iff the given vector is a permutation of [0..size()-1].
 inline bool IsValidPermutation(const std::vector<int>& v) {
@@ -177,6 +182,9 @@ bool PathHasCycle(const Graph& graph, const std::vector<int>& arc_path);
 //
 // Note that since graphs may have multi-arcs, the mapping isn't necessarily
 // unique, hence the function name.
+//
+// PERFORMANCE: If you see this function taking too much memory and/or too much
+// time, reach out to viger@: one could halve the memory usage and speed it up.
 template <class Graph>
 std::vector<int> ComputeOnePossibleReverseArcMapping(const Graph& graph,
                                                      bool die_if_not_symmetric);
@@ -288,7 +296,7 @@ std::unique_ptr<Graph> RemapGraph(const Graph& old_graph,
 
 template <class Graph>
 std::unique_ptr<Graph> GetSubgraphOfNodes(const Graph& old_graph,
-                                          const std::vector<int>& nodes) {
+                                          absl::Span<const int> nodes) {
   typedef typename Graph::NodeIndex NodeIndex;
   typedef typename Graph::ArcIndex ArcIndex;
   DCHECK(IsSubsetOf0N(nodes, old_graph.num_nodes())) << "Invalid subset";
@@ -347,7 +355,7 @@ void RemoveCyclesFromPath(const Graph& graph, std::vector<int>* arc_path) {
   if (arc_path->empty()) return;
 
   // This maps each node to the latest arc in the given path that leaves it.
-  std::map<int, int> last_arc_leaving_node;
+  absl::btree_map<int, int> last_arc_leaving_node;
   for (const int arc : *arc_path) last_arc_leaving_node[graph.Tail(arc)] = arc;
 
   // Special case for the destination.
@@ -382,9 +390,13 @@ template <class Graph>
 std::vector<int> ComputeOnePossibleReverseArcMapping(
     const Graph& graph, bool die_if_not_symmetric) {
   std::vector<int> reverse_arc(graph.num_arcs(), -1);
-  std::unordered_multimap<std::pair</*tail*/ int, /*head*/ int>,
-                          /*arc index*/ int>
+  // We need a multi-map since a given (tail,head) may appear several times.
+  // NOTE(user): It's free, in terms of space, to use InlinedVector<int, 4>
+  // rather than std::vector<int>.
+  absl::flat_hash_map<std::pair</*tail*/ int, /*head*/ int>,
+                      absl::InlinedVector<int, 4>>
       arc_map;
+
   for (int arc = 0; arc < graph.num_arcs(); ++arc) {
     const int tail = graph.Tail(arc);
     const int head = graph.Head(arc);
@@ -398,17 +410,27 @@ std::vector<int> ComputeOnePossibleReverseArcMapping(
     if (it != arc_map.end()) {
       // Found a reverse arc! Store the mapping and remove the
       // reverse arc from the map.
-      reverse_arc[arc] = it->second;
-      reverse_arc[it->second] = arc;
-      arc_map.erase(it);
+      reverse_arc[arc] = it->second.back();
+      reverse_arc[it->second.back()] = arc;
+      if (it->second.size() > 1) {
+        it->second.pop_back();
+      } else {
+        arc_map.erase(it);
+      }
     } else {
       // Reverse arc not in the map. Add the current arc to the map.
-      arc_map.insert({{tail, head}, arc});
+      arc_map[{tail, head}].push_back(arc);
     }
   }
   // Algorithm check, for debugging.
-  DCHECK_EQ(std::count(reverse_arc.begin(), reverse_arc.end(), -1),
-            arc_map.size());
+  if (DEBUG_MODE) {
+    int64_t num_unmapped_arcs = 0;
+    for (const auto& p : arc_map) {
+      num_unmapped_arcs += p.second.size();
+    }
+    DCHECK_EQ(std::count(reverse_arc.begin(), reverse_arc.end(), -1),
+              num_unmapped_arcs);
+  }
   if (die_if_not_symmetric) {
     CHECK_EQ(arc_map.size(), 0)
         << "The graph is not symmetric: " << arc_map.size() << " of "

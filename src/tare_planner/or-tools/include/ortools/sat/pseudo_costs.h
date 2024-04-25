@@ -1,4 +1,4 @@
-// Copyright 2010-2018 Google LLC
+// Copyright 2010-2022 Google LLC
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -16,8 +16,15 @@
 
 #include <vector>
 
+#include "absl/log/check.h"
+#include "ortools/base/logging.h"
+#include "ortools/base/strong_vector.h"
 #include "ortools/sat/integer.h"
+#include "ortools/sat/model.h"
+#include "ortools/sat/sat_base.h"
+#include "ortools/sat/sat_parameters.pb.h"
 #include "ortools/sat/util.h"
+#include "ortools/util/strong_integers.h"
 
 namespace operations_research {
 namespace sat {
@@ -26,7 +33,7 @@ namespace sat {
 // objective bounds per unit change in the variable bounds.
 class PseudoCosts {
  public:
-  // Helper struct to get information relavant for pseudo costs from branching
+  // Helper struct to get information relevant for pseudo costs from branching
   // decisions.
   struct VariableBoundChange {
     IntegerVariable var = kNoIntegerVariable;
@@ -54,30 +61,21 @@ class PseudoCosts {
     return pseudo_costs_[var].NumRecords();
   }
 
+  // Returns extracted information to update pseudo costs from the given
+  // branching decision.
+  std::vector<VariableBoundChange> GetBoundChanges(Literal decision);
+
  private:
-  // Initializes the pseudo costs of all variables to given value. This method
-  // doesn't change the number of recordings.
-  void InitializeCosts(double initial_value);
-
-  // Updates the cost of a given variable.
-  void UpdateCostForVar(IntegerVariable var, double new_cost);
-
   // Reference of integer trail to access the current bounds of variables.
-  const IntegerTrail& integer_trail_;
-
   const SatParameters& parameters_;
+  IntegerTrail* integer_trail_;
+  IntegerEncoder* encoder_;
 
-  bool pseudo_costs_initialized_ = false;
-
-  double initial_cost_ = 0.0;
-
-  gtl::ITIVector<IntegerVariable, IncrementalAverage> pseudo_costs_;
+  std::vector<IntegerVariable> relevant_variables_;
+  absl::StrongVector<IntegerVariable, bool> is_relevant_;
+  absl::StrongVector<IntegerVariable, double> scores_;
+  absl::StrongVector<IntegerVariable, IncrementalAverage> pseudo_costs_;
 };
-
-// Returns extracted information to update pseudo costs from the given
-// branching decision.
-std::vector<PseudoCosts::VariableBoundChange> GetBoundChanges(
-    LiteralIndex decision, Model* model);
 
 }  // namespace sat
 }  // namespace operations_research

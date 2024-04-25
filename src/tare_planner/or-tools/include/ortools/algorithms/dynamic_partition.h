@@ -1,4 +1,4 @@
-// Copyright 2010-2018 Google LLC
+// Copyright 2010-2022 Google LLC
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -11,7 +11,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// TODO(user,user): refine this toplevel comment when this file settles.
+// TODO(user): refine this toplevel comment when this file settles.
 //
 // Two dynamic partition classes: one that incrementally splits a partition
 // into more and more parts; one that incrementally merges a partition into less
@@ -22,18 +22,20 @@
 // (aka "elements") into disjoint equivalence classes (aka "parts").
 //
 // SAFETY:
-// Like std::vector<int> crashes when used improperly, these classes are not
-// "safe": most of their methods may crash if called with invalid arguments. The
-// client code is responsible for using this class properly. A few DCHECKs()
-// will help catch bugs, though.
+// Like vector<int> crashes when used improperly, these classes are not "safe":
+// most of their methods may crash if called with invalid arguments. The client
+// code is responsible for using this class properly. A few DCHECKs() will help
+// catch bugs, though.
 
 #ifndef OR_TOOLS_ALGORITHMS_DYNAMIC_PARTITION_H_
 #define OR_TOOLS_ALGORITHMS_DYNAMIC_PARTITION_H_
 
+#include <cstdint>
 #include <string>
 #include <vector>
 
-#include "ortools/base/logging.h"
+#include "absl/log/check.h"
+#include "absl/types/span.h"
 
 namespace operations_research {
 
@@ -58,7 +60,7 @@ class DynamicPartition {
 
   // Accessors.
   int NumElements() const { return element_.size(); }
-  const int NumParts() const { return part_.size(); }
+  int NumParts() const { return part_.size(); }
 
   // To iterate over the elements in part #i:
   // for (int element : partition.ElementsInPart(i)) { ... }
@@ -82,7 +84,7 @@ class DynamicPartition {
   // same fingerprint are most likely identical.
   // Also, two parts that have the exact same set of elements will *always*
   // have the same fingerprint.
-  uint64 FprintOfPart(int part) const;
+  uint64_t FprintOfPart(int part) const;
 
   // Refines the partition such that elements that are in distinguished_subset
   // never share the same part as elements that aren't in that subset.
@@ -112,8 +114,8 @@ class DynamicPartition {
   // Prerequisite: NumParts() >= original_num_parts.
   void UndoRefineUntilNumPartsEqual(int original_num_parts);
 
-  // Dump the partition to a std::string. There might be different conventions
-  // for sorting the parts and the elements inside them.
+  // Dump the partition to a string. There might be different conventions for
+  // sorting the parts and the elements inside them.
   enum DebugStringSorting {
     // Elements are sorted within parts, and parts are then sorted
     // lexicographically.
@@ -162,10 +164,10 @@ class DynamicPartition {
 
     // The part's fingerprint is the XOR of all fingerprints of its elements.
     // See FprintOfInt32() in the .cc.
-    uint64 fprint;
+    uint64_t fprint;
 
     Part() : start_index(0), end_index(0), parent_part(0), fprint(0) {}
-    Part(int start_index, int end_index, int parent_part, uint64 fprint)
+    Part(int start_index, int end_index, int parent_part, uint64_t fprint)
         : start_index(start_index),
           end_index(end_index),
           parent_part(parent_part),
@@ -188,7 +190,7 @@ struct DynamicPartition::IterablePart {
 
   int size() const { return end_ - begin_; }
 
-  IterablePart() {}
+  IterablePart() = default;
   IterablePart(const std::vector<int>::const_iterator& b,
                const std::vector<int>::const_iterator& e)
       : begin_(b), end_(e) {}
@@ -271,6 +273,37 @@ class MergingPartition {
   std::vector<bool> tmp_part_bit_;
 };
 
+// A subset of the API of DynamicPartition without backtrack support. The
+// Refine() here is about twice as fast, but we have limited query support until
+// a batch ComputeElementsByPart() is called.
+class SimpleDynamicPartition {
+ public:
+  explicit SimpleDynamicPartition(int num_elements)
+      : part_of_(num_elements, 0),
+        size_of_part_(num_elements > 0 ? 1 : 0, num_elements) {}
+
+  int NumElements() const { return part_of_.size(); }
+  int NumParts() const { return size_of_part_.size(); }
+  int PartOf(int element) const { return part_of_[element]; }
+  int SizeOfPart(int part) const { return size_of_part_[part]; }
+
+  void Refine(absl::Span<const int> distinguished_subset);
+
+  // This is meant to be called once after a bunch of Refine(). The returned
+  // Span<> points into the given buffer which is re-initialized. To handle
+  // strongly typed int, we actually call T(int) as we fill the buffer.
+  template <typename T>
+  std::vector<absl::Span<const T>> GetParts(std::vector<T>* buffer);
+
+ private:
+  std::vector<int> part_of_;
+  std::vector<int> size_of_part_;
+
+  // Temp data. Always empty or all zero.
+  std::vector<int> temp_to_clean_;
+  std::vector<int> temp_data_by_part_;
+};
+
 // *** Implementation of inline methods of the above classes. ***
 
 inline DynamicPartition::IterablePart DynamicPartition::ElementsInPart(
@@ -305,7 +338,7 @@ inline DynamicPartition::IterablePart DynamicPartition::ElementsInSamePartAs(
   return ElementsInPart(PartOf(i));
 }
 
-inline uint64 DynamicPartition::FprintOfPart(int part) const {
+inline uint64_t DynamicPartition::FprintOfPart(int part) const {
   DCHECK_GE(part, 0);
   DCHECK_LT(part, part_.size());
   return part_[part].fprint;
@@ -343,6 +376,35 @@ inline void MergingPartition::ResetNode(int node) {
   part_size_[node] = 1;
 }
 
+template <typename T>
+inline std::vector<absl::Span<const T>> SimpleDynamicPartition::GetParts(
+    std::vector<T>* buffer) {
+  const int num_elements = part_of_.size();
+  const int num_parts = size_of_part_.size();
+  buffer->resize(num_elements);
+
+  std::vector<absl::Span<const T>> result(num_parts);
+  if (result.empty()) return result;
+
+  // Compute start of each part in buffer.
+  std::vector<int>& starts = temp_data_by_part_;
+  starts.resize(num_parts, 0);
+  for (int i = 1; i < num_parts; ++i) {
+    starts[i] = starts[i - 1] + size_of_part_[i - 1];
+  }
+
+  // Fill result.
+  for (int i = 0; i < num_parts; ++i) {
+    result[i] = absl::MakeSpan(&(*buffer)[starts[i]], size_of_part_[i]);
+  }
+
+  // Copy elements in order and at their place.
+  for (int element = 0; element < num_elements; ++element) {
+    (*buffer)[starts[part_of_[element]]++] = T(element);
+  }
+  starts.clear();
+  return result;
+}
 }  // namespace operations_research
 
 #endif  // OR_TOOLS_ALGORITHMS_DYNAMIC_PARTITION_H_

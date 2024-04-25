@@ -1,4 +1,4 @@
-// Copyright 2010-2018 Google LLC
+// Copyright 2010-2022 Google LLC
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -28,7 +28,6 @@
 // factor could be shaved off the running time bound using the technique
 // described in http://dx.doi.org/10.1137/S0895480194281185
 // (see also http://theory.stanford.edu/~robert/papers/glob_upd.ps).
-//
 //
 // Example usage:
 //
@@ -102,7 +101,7 @@
 // problem and takes advantage of special properties of the resulting
 // minimum-cost flow problem to solve it efficiently using a
 // push-relabel method. For more information about minimum-cost flow
-// see google3/ortools/graph/min_cost_flow.h
+// see ortools/graph/min_cost_flow.h
 //
 // The method used here is the cost-scaling approach for the
 // minimum-cost circulation problem as described in [Goldberg and
@@ -196,6 +195,7 @@
 #define OR_TOOLS_GRAPH_LINEAR_ASSIGNMENT_H_
 
 #include <algorithm>
+#include <cstdint>
 #include <cstdlib>
 #include <deque>
 #include <limits>
@@ -204,19 +204,18 @@
 #include <utility>
 #include <vector>
 
+#include "absl/flags/declare.h"
 #include "absl/strings/str_format.h"
-#include "ortools/base/commandlineflags.h"
-#include "ortools/base/integral_types.h"
 #include "ortools/base/logging.h"
-#include "ortools/base/macros.h"
+#include "ortools/base/types.h"
 #include "ortools/graph/ebert_graph.h"
 #include "ortools/util/permutation.h"
 #include "ortools/util/zvector.h"
 
 #ifndef SWIG
-DECLARE_int64(assignment_alpha);
-DECLARE_int32(assignment_progress_logging_period);
-DECLARE_bool(assignment_stack_order);
+ABSL_DECLARE_FLAG(int64_t, assignment_alpha);
+ABSL_DECLARE_FLAG(int, assignment_progress_logging_period);
+ABSL_DECLARE_FLAG(bool, assignment_stack_order);
 #endif
 
 namespace operations_research {
@@ -238,6 +237,10 @@ class LinearSumAssignment {
   // with ForwardStarStaticGraph. In this case, the graph is passed to
   // us later via the SetGraph() method, below.
   LinearSumAssignment(NodeIndex num_left_nodes, ArcIndex num_arcs);
+
+  // This type is neither copyable nor movable.
+  LinearSumAssignment(const LinearSumAssignment&) = delete;
+  LinearSumAssignment& operator=(const LinearSumAssignment&) = delete;
 
   ~LinearSumAssignment() {}
 
@@ -396,10 +399,10 @@ class LinearSumAssignment {
           "%d double pushes; %d pushes",
           refinements_, relabelings_, double_pushes_, pushes_);
     }
-    int64 pushes_;
-    int64 double_pushes_;
-    int64 relabelings_;
-    int64 refinements_;
+    int64_t pushes_;
+    int64_t double_pushes_;
+    int64_t relabelings_;
+    int64_t refinements_;
   };
 
 #ifndef SWIG
@@ -790,7 +793,7 @@ class LinearSumAssignment {
   //
   // Proof: Suppose the price decrease of every node in the iteration
   // with epsilon_ == x is bounded by B(x) which is proportional to x
-  // (not surpisingly, this will be the same function B() as
+  // (not surprisingly, this will be the same function B() as
   // above). Assume for simplicity that C, the largest cost magnitude,
   // is a power of alpha. Then the price of each node, tallied across
   // all iterations is bounded
@@ -949,8 +952,6 @@ class LinearSumAssignment {
   // Statistics giving the numbers of various operations the algorithm
   // has performed in the current iteration.
   Stats iteration_stats_;
-
-  DISALLOW_COPY_AND_ASSIGN(LinearSumAssignment);
 };
 
 // Implementation of out-of-line LinearSumAssignment template member
@@ -966,7 +967,7 @@ LinearSumAssignment<GraphType>::LinearSumAssignment(
       num_left_nodes_(num_left_nodes),
       success_(false),
       cost_scaling_factor_(1 + num_left_nodes),
-      alpha_(FLAGS_assignment_alpha),
+      alpha_(absl::GetFlag(FLAGS_assignment_alpha)),
       epsilon_(0),
       price_lower_bound_(0),
       slack_relabeling_price_(0),
@@ -976,7 +977,7 @@ LinearSumAssignment<GraphType>::LinearSumAssignment(
       matched_arc_(num_left_nodes, 0),
       matched_node_(num_left_nodes, 2 * num_left_nodes - 1),
       scaled_arc_cost_(graph.max_end_arc_index(), 0),
-      active_nodes_(FLAGS_assignment_stack_order
+      active_nodes_(absl::GetFlag(FLAGS_assignment_stack_order)
                         ? static_cast<ActiveNodeContainerInterface*>(
                               new ActiveNodeStack())
                         : static_cast<ActiveNodeContainerInterface*>(
@@ -989,7 +990,7 @@ LinearSumAssignment<GraphType>::LinearSumAssignment(
       num_left_nodes_(num_left_nodes),
       success_(false),
       cost_scaling_factor_(1 + num_left_nodes),
-      alpha_(FLAGS_assignment_alpha),
+      alpha_(absl::GetFlag(FLAGS_assignment_alpha)),
       epsilon_(0),
       price_lower_bound_(0),
       slack_relabeling_price_(0),
@@ -999,7 +1000,7 @@ LinearSumAssignment<GraphType>::LinearSumAssignment(
       matched_arc_(num_left_nodes, 0),
       matched_node_(num_left_nodes, 2 * num_left_nodes - 1),
       scaled_arc_cost_(num_arcs, 0),
-      active_nodes_(FLAGS_assignment_stack_order
+      active_nodes_(absl::GetFlag(FLAGS_assignment_stack_order)
                         ? static_cast<ActiveNodeContainerInterface*>(
                               new ActiveNodeStack())
                         : static_cast<ActiveNodeContainerInterface*>(
@@ -1026,6 +1027,10 @@ class CostValueCycleHandler : public PermutationCycleHandler<ArcIndexType> {
   explicit CostValueCycleHandler(std::vector<CostValue>* cost)
       : temp_(0), cost_(cost) {}
 
+  // This type is neither copyable nor movable.
+  CostValueCycleHandler(const CostValueCycleHandler&) = delete;
+  CostValueCycleHandler& operator=(const CostValueCycleHandler&) = delete;
+
   void SetTempFromIndex(ArcIndexType source) override {
     temp_ = (*cost_)[source];
   }
@@ -1044,8 +1049,6 @@ class CostValueCycleHandler : public PermutationCycleHandler<ArcIndexType> {
  private:
   CostValue temp_;
   std::vector<CostValue>* const cost_;
-
-  DISALLOW_COPY_AND_ASSIGN(CostValueCycleHandler);
 };
 
 // Logically this class should be defined inside OptimizeGraphLayout,

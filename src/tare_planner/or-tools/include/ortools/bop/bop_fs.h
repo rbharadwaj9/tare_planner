@@ -1,4 +1,4 @@
-// Copyright 2010-2018 Google LLC
+// Copyright 2010-2022 Google LLC
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -14,22 +14,16 @@
 #ifndef OR_TOOLS_BOP_BOP_FS_H_
 #define OR_TOOLS_BOP_BOP_FS_H_
 
-#include <string>
+#include <cstdint>
+#include <memory>
 
-#include "ortools/base/basictypes.h"
-#include "ortools/base/int_type.h"
-#include "ortools/base/int_type_indexed_vector.h"
-#include "ortools/base/integral_types.h"
-#include "ortools/base/logging.h"
-#include "ortools/base/macros.h"
-#include "ortools/base/random.h"
+#include "absl/random/bit_gen_ref.h"
+#include "absl/strings/string_view.h"
 #include "ortools/bop/bop_base.h"
 #include "ortools/bop/bop_parameters.pb.h"
-#include "ortools/bop/bop_solution.h"
-#include "ortools/bop/bop_types.h"
-#include "ortools/bop/bop_util.h"
 #include "ortools/glop/lp_solver.h"
-#include "ortools/sat/boolean_problem.pb.h"
+#include "ortools/lp_data/lp_data.h"
+#include "ortools/lp_data/lp_types.h"
 #include "ortools/sat/sat_solver.h"
 #include "ortools/util/time_limit.h"
 
@@ -48,7 +42,7 @@ class GuidedSatFirstSolutionGenerator : public BopOptimizerBase {
     kObjectiveGuided,  // Guided by the objective coefficient.
     kUserGuided,       // Guided by the problem assignment_preference().
   };
-  GuidedSatFirstSolutionGenerator(const std::string& name, Policy policy);
+  GuidedSatFirstSolutionGenerator(absl::string_view name, Policy policy);
   ~GuidedSatFirstSolutionGenerator() override;
 
   bool ShouldBeRun(const ProblemState& problem_state) const override;
@@ -66,7 +60,7 @@ class GuidedSatFirstSolutionGenerator : public BopOptimizerBase {
 
   const Policy policy_;
   bool abort_;
-  int64 state_update_stamp_;
+  int64_t state_update_stamp_;
   std::unique_ptr<sat::SatSolver> sat_solver_;
 };
 
@@ -82,10 +76,10 @@ class GuidedSatFirstSolutionGenerator : public BopOptimizerBase {
 //              the solutions. To try.
 class BopRandomFirstSolutionGenerator : public BopOptimizerBase {
  public:
-  BopRandomFirstSolutionGenerator(const std::string& name,
+  BopRandomFirstSolutionGenerator(absl::string_view name,
                                   const BopParameters& parameters,
                                   sat::SatSolver* sat_propagator,
-                                  MTRandom* random);
+                                  absl::BitGenRef random);
   ~BopRandomFirstSolutionGenerator() override;
 
   bool ShouldBeRun(const ProblemState& problem_state) const override;
@@ -98,7 +92,7 @@ class BopRandomFirstSolutionGenerator : public BopOptimizerBase {
       const ProblemState& problem_state);
 
   int random_seed_;
-  MTRandom* random_;
+  absl::BitGenRef random_;
   sat::SatSolver* sat_propagator_;
 };
 
@@ -108,7 +102,7 @@ class BopRandomFirstSolutionGenerator : public BopOptimizerBase {
 // and the lower bound.
 class LinearRelaxation : public BopOptimizerBase {
  public:
-  LinearRelaxation(const BopParameters& parameters, const std::string& name);
+  LinearRelaxation(const BopParameters& parameters, absl::string_view name);
   ~LinearRelaxation() override;
 
   bool ShouldBeRun(const ProblemState& problem_state) const override;
@@ -139,7 +133,7 @@ class LinearRelaxation : public BopOptimizerBase {
   bool CostIsWorseThanSolution(double scaled_cost, double tolerance) const;
 
   const BopParameters parameters_;
-  int64 state_update_stamp_;
+  int64_t state_update_stamp_;
   bool lp_model_loaded_;
   int num_full_solves_;
   glop::LinearProgram lp_model_;

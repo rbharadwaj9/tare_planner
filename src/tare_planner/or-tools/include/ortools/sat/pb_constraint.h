@@ -1,4 +1,4 @@
-// Copyright 2010-2018 Google LLC
+// Copyright 2010-2022 Google LLC
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -15,30 +15,34 @@
 #define OR_TOOLS_SAT_PB_CONSTRAINT_H_
 
 #include <algorithm>
+#include <cstdint>
 #include <limits>
 #include <memory>
+#include <ostream>
 #include <string>
 #include <vector>
 
 #include "absl/container/flat_hash_map.h"
+#include "absl/log/check.h"
+#include "absl/strings/string_view.h"
 #include "absl/types/span.h"
-#include "ortools/base/int_type.h"
-#include "ortools/base/int_type_indexed_vector.h"
-#include "ortools/base/integral_types.h"
 #include "ortools/base/logging.h"
 #include "ortools/base/macros.h"
+#include "ortools/base/strong_vector.h"
+#include "ortools/base/types.h"
 #include "ortools/sat/model.h"
 #include "ortools/sat/sat_base.h"
 #include "ortools/sat/sat_parameters.pb.h"
 #include "ortools/util/bitset.h"
 #include "ortools/util/stats.h"
+#include "ortools/util/strong_integers.h"
 
 namespace operations_research {
 namespace sat {
 
 // The type of the integer coefficients in a pseudo-Boolean constraint.
 // This is also used for the current value of a constraint or its bounds.
-DEFINE_INT_TYPE(Coefficient, int64);
+DEFINE_STRONG_INT64_TYPE(Coefficient);
 
 // IMPORTANT: We can't use numeric_limits<Coefficient>::max() which will compile
 // but just returns zero!!
@@ -47,9 +51,9 @@ const Coefficient kCoefficientMax(
 
 // Represents a term in a pseudo-Boolean formula.
 struct LiteralWithCoeff {
-  LiteralWithCoeff() {}
+  LiteralWithCoeff() = default;
   LiteralWithCoeff(Literal l, Coefficient c) : literal(l), coefficient(c) {}
-  LiteralWithCoeff(Literal l, int64 c) : literal(l), coefficient(c) {}
+  LiteralWithCoeff(Literal l, int64_t c) : literal(l), coefficient(c) {}
   Literal literal;
   Coefficient coefficient;
   bool operator==(const LiteralWithCoeff& other) const {
@@ -57,6 +61,13 @@ struct LiteralWithCoeff {
            coefficient == other.coefficient;
   }
 };
+
+template <typename H>
+H AbslHashValue(H h, const LiteralWithCoeff& term) {
+  return H::combine(std::move(h), term.literal.Index(),
+                    term.coefficient.value());
+}
+
 inline std::ostream& operator<<(std::ostream& os, LiteralWithCoeff term) {
   os << term.coefficient << "[" << term.literal.DebugString() << "]";
   return os;
@@ -93,7 +104,7 @@ bool ComputeBooleanLinearExpressionCanonicalForm(
 // Finally, this will return false if some integer overflow or underflow
 // occurred during the constraint simplification.
 bool ApplyLiteralMapping(
-    const gtl::ITIVector<LiteralIndex, LiteralIndex>& mapping,
+    const absl::StrongVector<LiteralIndex, LiteralIndex>& mapping,
     std::vector<LiteralWithCoeff>* cst, Coefficient* bound_shift,
     Coefficient* max_value);
 
@@ -140,7 +151,7 @@ void SimplifyCanonicalBooleanLinearConstraint(
 // symmetries of the associated graph that are not useful.
 class CanonicalBooleanLinearProblem {
  public:
-  CanonicalBooleanLinearProblem() {}
+  CanonicalBooleanLinearProblem() = default;
 
   // Adds a new constraint to the problem. The bounds are inclusive.
   // Returns false in case of a possible overflow or if the constraint is
@@ -153,7 +164,7 @@ class CanonicalBooleanLinearProblem {
 
   // Getters. All the constraints are guaranteed to be in canonical form.
   int NumConstraints() const { return constraints_.size(); }
-  const Coefficient Rhs(int i) const { return rhs_[i]; }
+  Coefficient Rhs(int i) const { return rhs_[i]; }
   const std::vector<LiteralWithCoeff>& Constraint(int i) const {
     return constraints_[i];
   }
@@ -177,7 +188,7 @@ class MutableUpperBoundedLinearConstraint {
   void ClearAndResize(int num_variables);
 
   // Reset the constraint to 0 <= 0.
-  // Note that the contraint size stays the same.
+  // Note that the constraint size stays the same.
   void ClearAll();
 
   // Returns the coefficient (>= 0) of the given variable.
@@ -257,7 +268,7 @@ class MutableUpperBoundedLinearConstraint {
   void ReduceSlackTo(const Trail& trail, int trail_index,
                      Coefficient initial_slack, Coefficient target);
 
-  // Copies this constraint into a std::vector<LiteralWithCoeff> representation.
+  // Copies this constraint into a vector<LiteralWithCoeff> representation.
   void CopyIntoVector(std::vector<LiteralWithCoeff>* output);
 
   // Adds a non-negative value to this constraint Rhs().
@@ -306,7 +317,7 @@ class MutableUpperBoundedLinearConstraint {
     return non_zeros_.PositionsSetAtLeastOnce();
   }
 
-  // Returns a std::string representation of the constraint.
+  // Returns a string representation of the constraint.
   std::string DebugString();
 
  private:
@@ -318,7 +329,7 @@ class MutableUpperBoundedLinearConstraint {
   // The encoding is special:
   // - If terms_[x] > 0, then the associated term is 'terms_[x] . x'
   // - If terms_[x] < 0, then the associated term is 'terms_[x] . (x - 1)'
-  gtl::ITIVector<BooleanVariable, Coefficient> terms_;
+  absl::StrongVector<BooleanVariable, Coefficient> terms_;
 
   // The right hand side of the constraint (sum terms <= rhs_).
   Coefficient rhs_;
@@ -343,7 +354,7 @@ struct PbConstraintsEnqueueHelper {
   }
 
   // The propagator id of PbConstraints.
-  int propagator_id;
+  int propagator_id = 0;
 
   // A temporary vector to store the last conflict.
   std::vector<Literal> conflict;
@@ -469,7 +480,7 @@ class UpperBoundedLinearConstraint {
 
   // Returns a fingerprint of the constraint linear expression (without rhs).
   // This is used for duplicate detection.
-  int64 hash() const { return hash_; }
+  uint64_t hash() const { return hash_; }
 
   // This is used to get statistics of the number of literals inspected by
   // a Propagate() call.
@@ -507,7 +518,7 @@ class UpperBoundedLinearConstraint {
   std::vector<Literal> literals_;
   Coefficient rhs_;
 
-  int64 hash_;
+  uint64_t hash_;
 };
 
 // Class responsible for managing a set of pseudo-Boolean constraints and their
@@ -570,6 +581,7 @@ class PbConstraints : public SatPropagator {
 
   // Returns the number of constraints managed by this class.
   int NumberOfConstraints() const { return constraints_.size(); }
+  bool IsEmpty() const final { return constraints_.empty(); }
 
   // ConflictingConstraint() returns the last PB constraint that caused a
   // conflict. Calling ClearConflictingConstraint() reset this to nullptr.
@@ -599,11 +611,11 @@ class PbConstraints : public SatPropagator {
   }
 
   // Some statistics.
-  int64 num_constraint_lookups() const { return num_constraint_lookups_; }
-  int64 num_inspected_constraint_literals() const {
+  int64_t num_constraint_lookups() const { return num_constraint_lookups_; }
+  int64_t num_inspected_constraint_literals() const {
     return num_inspected_constraint_literals_;
   }
-  int64 num_threshold_updates() const { return num_threshold_updates_; }
+  int64_t num_threshold_updates() const { return num_threshold_updates_; }
 
  private:
   bool PropagateNext(Trail* trail);
@@ -625,9 +637,9 @@ class PbConstraints : public SatPropagator {
   // about two times faster with this implementation than one with direct
   // pointer to an UpperBoundedLinearConstraint. The main reason for this is
   // probably that the thresholds_ vector is a lot more efficient cache-wise.
-  DEFINE_INT_TYPE(ConstraintIndex, int32);
+  DEFINE_STRONG_INDEX_TYPE(ConstraintIndex);
   struct ConstraintIndexWithCoeff {
-    ConstraintIndexWithCoeff() {}  // Needed for vector.resize()
+    ConstraintIndexWithCoeff() = default;  // Needed for vector.resize()
     ConstraintIndexWithCoeff(bool n, ConstraintIndex i, Coefficient c)
         : need_untrail_inspection(n), index(i), coefficient(c) {}
     bool need_untrail_inspection;
@@ -639,11 +651,11 @@ class PbConstraints : public SatPropagator {
   std::vector<std::unique_ptr<UpperBoundedLinearConstraint>> constraints_;
 
   // The current value of the threshold for each constraints.
-  gtl::ITIVector<ConstraintIndex, Coefficient> thresholds_;
+  absl::StrongVector<ConstraintIndex, Coefficient> thresholds_;
 
   // For each literal, the list of all the constraints that contains it together
   // with the literal coefficient in these constraints.
-  gtl::ITIVector<LiteralIndex, std::vector<ConstraintIndexWithCoeff>>
+  absl::StrongVector<LiteralIndex, std::vector<ConstraintIndexWithCoeff>>
       to_update_;
 
   // Bitset used to optimize the Untrail() function.
@@ -651,7 +663,7 @@ class PbConstraints : public SatPropagator {
 
   // Pointers to the constraints grouped by their hash.
   // This is used to find duplicate constraints by AddConstraint().
-  absl::flat_hash_map<int64, std::vector<UpperBoundedLinearConstraint*>>
+  absl::flat_hash_map<int64_t, std::vector<UpperBoundedLinearConstraint*>>
       possible_duplicates_;
 
   // Helper to enqueue propagated literals on the trail and store their reasons.
@@ -671,9 +683,9 @@ class PbConstraints : public SatPropagator {
 
   // Some statistics.
   mutable StatsGroup stats_;
-  int64 num_constraint_lookups_;
-  int64 num_inspected_constraint_literals_;
-  int64 num_threshold_updates_;
+  int64_t num_constraint_lookups_;
+  int64_t num_inspected_constraint_literals_;
+  int64_t num_threshold_updates_;
   DISALLOW_COPY_AND_ASSIGN(PbConstraints);
 };
 
@@ -713,7 +725,7 @@ class VariableWithSameReasonIdentifier {
 
  private:
   const Trail& trail_;
-  gtl::ITIVector<BooleanVariable, BooleanVariable> first_variable_;
+  absl::StrongVector<BooleanVariable, BooleanVariable> first_variable_;
   SparseBitset<BooleanVariable> seen_;
 
   DISALLOW_COPY_AND_ASSIGN(VariableWithSameReasonIdentifier);

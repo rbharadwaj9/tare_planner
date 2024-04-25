@@ -1,4 +1,4 @@
-// Copyright 2010-2018 Google LLC
+// Copyright 2010-2022 Google LLC
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -19,13 +19,14 @@
 #include <string>
 
 #include "absl/strings/str_format.h"
-#include "ortools/base/integral_types.h"
+#include "absl/strings/string_view.h"
+#include "ortools/base/types.h"
 #include "ortools/lp_data/lp_types.h"
 
 namespace operations_research {
 namespace glop {
 
-// Returns a std::string representing a floating-point number in decimal,
+// Returns a string representing a floating-point number in decimal,
 // with a precision corresponding to the type of the argument.
 inline std::string Stringify(const float a) {
   return absl::StrFormat("%.7g", a);
@@ -39,23 +40,22 @@ inline std::string Stringify(const long double a) {
   return absl::StrFormat("%.19g", a);
 }
 
-// Returns a std::string "num/den" representing the rational approximation of x.
+// Returns a string "num/den" representing the rational approximation of x.
 // The absolute difference between the output fraction and the input "x" will
 // not exceed "precision".
-std::string StringifyRational(const double x, const double precision);
+std::string StringifyRational(double x, double precision);
 
-// If fraction is true, returns a std::string corresponding to the rational
+// If fraction is true, returns a string corresponding to the rational
 // approximation or a decimal approximation otherwise. Note that the absolute
 // difference between the output fraction and "x" will never exceed
 // std::numeric_limits<T>::epsilon().
-std::string Stringify(const Fractional x, bool fraction);
+std::string Stringify(Fractional x, bool fraction);
 
 // Pretty prints a monomial a*x using Stringify(x, fraction) to display a,
 // taking care of the sign of x, whether a is 0, 1, -1, integer. Note that the
 // absolute difference between the output fraction and "x" will never exceed
 // std::numeric_limits<T>::epsilon().
-std::string StringifyMonomial(const Fractional a, const std::string& x,
-                              bool fraction);
+std::string StringifyMonomial(Fractional a, absl::string_view x, bool fraction);
 
 }  // namespace glop
 }  // namespace operations_research

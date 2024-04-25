@@ -1,4 +1,4 @@
-// Copyright 2010-2018 Google LLC
+// Copyright 2010-2022 Google LLC
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -15,11 +15,13 @@
 #define OR_TOOLS_GLOP_LP_SOLVER_H_
 
 #include <memory>
+#include <string>
 
 #include "ortools/glop/parameters.pb.h"
-#include "ortools/glop/preprocessor.h"
+#include "ortools/glop/revised_simplex.h"
 #include "ortools/lp_data/lp_data.h"
 #include "ortools/lp_data/lp_types.h"
+#include "ortools/util/logging.h"
 #include "ortools/util/time_limit.h"
 
 namespace operations_research {
@@ -30,11 +32,18 @@ class LPSolver {
  public:
   LPSolver();
 
+  // This type is neither copyable nor movable.
+  LPSolver(const LPSolver&) = delete;
+  LPSolver& operator=(const LPSolver&) = delete;
+
   // Sets and gets the solver parameters.
   // See the proto for an extensive documentation.
   void SetParameters(const GlopParameters& parameters);
   const GlopParameters& GetParameters() const;
   GlopParameters* GetMutableParameters();
+
+  // Returns a string that describes the version of the solver.
+  static std::string GlopVersion();
 
   // Solves the given linear program and returns the solve status. See the
   // ProblemStatus documentation for a description of the different values.
@@ -60,7 +69,7 @@ class LPSolver {
   // Puts the solver in a clean state.
   //
   // Calling Solve() for the first time, or calling Clear() then Solve() on the
-  // same problem is guaranted to be deterministic and to always give the same
+  // same problem is guaranteed to be deterministic and to always give the same
   // result, assuming that no time limit was specified.
   void Clear();
 
@@ -117,6 +126,19 @@ class LPSolver {
     return constraint_statuses_;
   }
 
+  // Accessors to information related to unboundedness. A primal ray is returned
+  // for primal unbounded problems and a dual ray is returned for dual unbounded
+  // problems. constraints_dual_ray corresponds to dual multiplier for
+  // constraints and variable_bounds_dual_ray corresponds to dual multipliers
+  // for variable bounds (cf. reduced_costs).
+  const DenseRow& primal_ray() const { return primal_ray_; }
+  const DenseColumn& constraints_dual_ray() const {
+    return constraints_dual_ray_;
+  }
+  const DenseRow& variable_bounds_dual_ray() const {
+    return variable_bounds_dual_ray_;
+  }
+
   // Returns the primal maximum infeasibility of the solution.
   // This indicates by how much the variable and constraint bounds are violated.
   Fractional GetMaximumPrimalInfeasibility() const;
@@ -148,6 +170,13 @@ class LPSolver {
   //
   // TODO(user): Improve the correlation with the running time.
   double DeterministicTime() const;
+
+  // Returns the SolverLogger used during solves.
+  //
+  // Please note that EnableLogging() and SetLogToStdOut() are reset at the
+  // beginning of each solve based on parameters so setting them will have no
+  // effect.
+  SolverLogger& GetSolverLogger();
 
  private:
   // Resizes all the solution vectors to the given sizes.
@@ -241,6 +270,8 @@ class LPSolver {
   // LinearProgram& input.
   LinearProgram current_linear_program_;
 
+  SolverLogger logger_;
+
   // The revised simplex solver.
   std::unique_ptr<RevisedSimplex> revised_simplex_;
 
@@ -248,16 +279,21 @@ class LPSolver {
   int num_revised_simplex_iterations_;
 
   // The current ProblemSolution.
-  // TODO(user): use a ProblemSolution directly?
+  // TODO(user): use a ProblemSolution directly? Note, that primal_ray_,
+  // constraints_dual_ray_ and variable_bounds_dual_ray_ are not currently in
+  // ProblemSolution and are filled directly by RunRevisedSimplexIfNeeded().
   DenseRow primal_values_;
   DenseColumn dual_values_;
   VariableStatusRow variable_statuses_;
   ConstraintStatusColumn constraint_statuses_;
+  DenseRow primal_ray_;
+  DenseColumn constraints_dual_ray_;
+  DenseRow variable_bounds_dual_ray_;
 
   // Quantities computed from the solution and the linear program.
   DenseRow reduced_costs_;
   DenseColumn constraint_activities_;
-  Fractional problem_objective_value_;
+  Fractional problem_objective_value_ = 0.0;
   bool may_have_multiple_solutions_;
   Fractional max_absolute_primal_infeasibility_;
   Fractional max_absolute_dual_infeasibility_;
@@ -267,8 +303,6 @@ class LPSolver {
 
   // The number of times Solve() was called. Used to number dump files.
   int num_solves_;
-
-  DISALLOW_COPY_AND_ASSIGN(LPSolver);
 };
 
 }  // namespace glop
