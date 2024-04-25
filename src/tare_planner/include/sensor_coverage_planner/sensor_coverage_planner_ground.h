@@ -26,6 +26,7 @@
 #include <sensor_msgs/msg/joy.hpp>
 #include <sensor_msgs/msg/point_cloud2.hpp>
 #include <std_msgs/msg/bool.hpp>
+#include <std_msgs/msg/empty.hpp>
 #include <std_msgs/msg/float32.hpp>
 #include <std_msgs/msg/int32.hpp>
 #include <std_msgs/msg/int32_multi_array.hpp>
@@ -83,6 +84,7 @@ private:
   std::string sub_viewpoint_boundary_topic_;
   std::string sub_nogo_boundary_topic_;
   std::string sub_joystick_topic_;
+  std::string sub_reset_waypoint_topic_;
 
   std::string pub_exploration_finish_topic_;
   std::string pub_runtime_breakdown_topic_;
@@ -227,6 +229,7 @@ private:
   rclcpp::Subscription<geometry_msgs::msg::PolygonStamped>::SharedPtr
       nogo_boundary_sub_;
   rclcpp::Subscription<sensor_msgs::msg::Joy>::SharedPtr joystick_sub_;
+  rclcpp::Subscription<std_msgs::msg::Empty>::SharedPtr reset_waypoint_sub_;
 
   // ROS publishers
   rclcpp::Publisher<nav_msgs::msg::Path>::SharedPtr global_path_full_publisher_;
@@ -268,6 +271,8 @@ private:
   void NogoBoundaryCallback(
       const geometry_msgs::msg::PolygonStamped::ConstSharedPtr polygon_msg);
   void JoystickCallback(const sensor_msgs::msg::Joy::ConstSharedPtr joy_msg);
+  void
+  ResetWaypointCallback(const std_msgs::msg::Empty::ConstSharedPtr empty_msg);
 
   void SendInitialWaypoint();
   void UpdateKeyposeGraph();

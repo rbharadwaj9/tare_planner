@@ -41,6 +41,8 @@ void SensorCoveragePlanner3D::ReadParameters() {
   this->declare_parameter<std::string>("sub_nogo_boundary_topic_",
                                        "/nogo_boundary");
   this->declare_parameter<std::string>("sub_joystick_topic_", "/joy");
+  this->declare_parameter<std::string>("sub_reset_waypoint_topic_",
+                                       "/reset_waypoint");
   this->declare_parameter<std::string>("pub_exploration_finish_topic_",
                                        "exploration_finish");
   this->declare_parameter<std::string>("pub_runtime_breakdown_topic_",
@@ -192,6 +194,7 @@ void SensorCoveragePlanner3D::ReadParameters() {
                       sub_viewpoint_boundary_topic_);
   this->get_parameter("sub_nogo_boundary_topic_", sub_nogo_boundary_topic_);
   this->get_parameter("sub_joystick_topic_", sub_joystick_topic_);
+  this->get_parameter("sub_reset_waypoint_topic_", sub_reset_waypoint_topic_);
   this->get_parameter("pub_exploration_finish_topic_",
                       pub_exploration_finish_topic_);
   this->get_parameter("pub_runtime_breakdown_topic_",
@@ -426,6 +429,10 @@ bool SensorCoveragePlanner3D::initialize() {
       sub_joystick_topic_, 5,
       std::bind(&SensorCoveragePlanner3D::JoystickCallback, this,
                 std::placeholders::_1));
+  reset_waypoint_sub_ = this->create_subscription<std_msgs::msg::Empty>(
+      sub_reset_waypoint_topic_, 1,
+      std::bind(&SensorCoveragePlanner3D::ResetWaypointCallback, this,
+                std::placeholders::_1));
 
   global_path_full_publisher_ =
       this->create_publisher<nav_msgs::msg::Path>("global_path_full", 1);
@@ -636,6 +643,12 @@ void SensorCoveragePlanner3D::JoystickCallback(
       std::cout << "reset waypoint" << std::endl;
     }
   }
+}
+
+void SensorCoveragePlanner3D::ResetWaypointCallback(
+    const std_msgs::msg::Empty::ConstSharedPtr empty_msg) {
+  reset_waypoint_ = true;
+  std::cout << "reset waypoint" << std::endl;
 }
 
 void SensorCoveragePlanner3D::SendInitialWaypoint() {
