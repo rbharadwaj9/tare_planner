@@ -134,6 +134,7 @@ target_link_libraries(tare_planner_node ${catkin_LIBRARIES} sensor_coverage_plan
 #############
 
 install(TARGETS
+  navigationBoundary
   tare_planner_node
   DESTINATION lib/${PROJECT_NAME})
 
@@ -144,6 +145,9 @@ install(DIRECTORY rviz/
         DESTINATION share/${PROJECT_NAME}/
         )
 install(DIRECTORY config/
+        DESTINATION share/${PROJECT_NAME}
+      )
+install(DIRECTORY data/
         DESTINATION share/${PROJECT_NAME}
       )
 

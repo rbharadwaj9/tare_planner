@@ -33,7 +33,7 @@ def generate_launch_description():
         output='screen',
         parameters=[
             {'boundary_file_dir': get_package_share_directory(
-                'tare_planner') + '/data/boundary.ply'},
+                'tare_planner') + '/boundary.ply'},
             {'sendBoundary': True},
             {'sendBoundaryInterval': 2}
         ],
