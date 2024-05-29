@@ -114,7 +114,7 @@ private:
   // Int
   int kDirectionChangeCounterThr;
   int kDirectionNoChangeCounterThr;
-  int kResetWaypointJoystickButton;
+  int kResetWaypointJoystickAxesID;
 
   std::shared_ptr<pointcloud_utils_ns::PCLCloud<PlannerCloudPointType>>
       keypose_cloud_;
@@ -209,6 +209,7 @@ private:
 
   double start_time_;
   double global_direction_switch_time_;
+  double reset_waypoint_joystick_axis_value_;
 
   rclcpp::TimerBase::SharedPtr execution_timer_;
 

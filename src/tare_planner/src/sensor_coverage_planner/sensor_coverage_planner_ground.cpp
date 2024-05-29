@@ -74,7 +74,7 @@ void SensorCoveragePlanner3D::ReadParameters() {
   // Int
   this->declare_parameter<int>("kDirectionChangeCounterThr", 4);
   this->declare_parameter<int>("kDirectionNoChangeCounterThr", 5);
-  this->declare_parameter<int>("kResetWaypointJoystickButton", 0);
+  this->declare_parameter<int>("kResetWaypointJoystickAxesID", 0);
 
   // grid_world
   this->declare_parameter<int>("kGridWorldXNum", 121);
@@ -230,8 +230,8 @@ void SensorCoveragePlanner3D::ReadParameters() {
   this->get_parameter("kDirectionChangeCounterThr", kDirectionChangeCounterThr);
   this->get_parameter("kDirectionNoChangeCounterThr",
                       kDirectionNoChangeCounterThr);
-  this->get_parameter("kResetWaypointJoystickButton",
-                      kResetWaypointJoystickButton);
+  this->get_parameter("kResetWaypointJoystickAxesID",
+                      kResetWaypointJoystickAxesID);
 }
 
 // PlannerData::PlannerData()
@@ -365,7 +365,7 @@ SensorCoveragePlanner3D::SensorCoveragePlanner3D()
       use_momentum_(false), lookahead_point_in_line_of_sight_(true),
       reset_waypoint_(false), registered_cloud_count_(0), keypose_count_(0),
       direction_change_count_(0), direction_no_change_count_(0),
-      momentum_activation_count_(0) {
+      momentum_activation_count_(0), reset_waypoint_joystick_axis_value_(1.0) {
   std::cout << "finished constructor" << std::endl;
 }
 
@@ -636,12 +636,15 @@ void SensorCoveragePlanner3D::NogoBoundaryCallback(
 
 void SensorCoveragePlanner3D::JoystickCallback(
     const sensor_msgs::msg::Joy::ConstSharedPtr joy_msg) {
-  if (kResetWaypointJoystickButton >= 0 &&
-      kResetWaypointJoystickButton < joy_msg->buttons.size()) {
-    if (joy_msg->buttons[kResetWaypointJoystickButton] == 1) {
+  if (kResetWaypointJoystickAxesID >= 0 &&
+      kResetWaypointJoystickAxesID < joy_msg->axes.size()) {
+    if (reset_waypoint_joystick_axis_value_ > -0.9 &&
+        joy_msg->axes[kResetWaypointJoystickAxesID] < -0.9) {
       reset_waypoint_ = true;
       std::cout << "reset waypoint" << std::endl;
     }
+    reset_waypoint_joystick_axis_value_ =
+        joy_msg->axes[kResetWaypointJoystickAxesID];
   }
 }
 

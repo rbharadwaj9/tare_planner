@@ -33,7 +33,7 @@ tare_planner_node:
     kUseMomentum : true 
     kDirectionChangeCounterThr : 6
     kDirectionNoChangeCounterThr : 5
-    kResetWaypointJoystickButton : 0
+    kResetWaypointJoystickAxesID : 2
 
     # PlanningEnv
     kUseFrontier : true
