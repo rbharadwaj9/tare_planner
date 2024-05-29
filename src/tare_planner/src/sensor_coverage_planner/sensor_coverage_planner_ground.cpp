@@ -638,8 +638,8 @@ void SensorCoveragePlanner3D::JoystickCallback(
     const sensor_msgs::msg::Joy::ConstSharedPtr joy_msg) {
   if (kResetWaypointJoystickAxesID >= 0 &&
       kResetWaypointJoystickAxesID < joy_msg->axes.size()) {
-    if (reset_waypoint_joystick_axis_value_ > -0.9 &&
-        joy_msg->axes[kResetWaypointJoystickAxesID] < -0.9) {
+    if (reset_waypoint_joystick_axis_value_ > -0.1 &&
+        joy_msg->axes[kResetWaypointJoystickAxesID] < -0.1) {
       reset_waypoint_ = true;
       std::cout << "reset waypoint" << std::endl;
     }
