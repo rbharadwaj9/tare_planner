@@ -641,6 +641,15 @@ void SensorCoveragePlanner3D::JoystickCallback(
     if (reset_waypoint_joystick_axis_value_ > -0.1 &&
         joy_msg->axes[kResetWaypointJoystickAxesID] < -0.1) {
       reset_waypoint_ = true;
+
+      // Set waypoint to the current robot position to stop the robot in place
+      geometry_msgs::msg::PointStamped waypoint;
+      waypoint.header.frame_id = "map";
+      waypoint.header.stamp = this->now();
+      waypoint.point.x = robot_position_.x;
+      waypoint.point.y = robot_position_.y;
+      waypoint.point.z = robot_position_.z;
+      waypoint_pub_->publish(waypoint);
       std::cout << "reset waypoint" << std::endl;
     }
     reset_waypoint_joystick_axis_value_ =
@@ -651,6 +660,15 @@ void SensorCoveragePlanner3D::JoystickCallback(
 void SensorCoveragePlanner3D::ResetWaypointCallback(
     const std_msgs::msg::Empty::ConstSharedPtr empty_msg) {
   reset_waypoint_ = true;
+
+  // Set waypoint to the current robot position to stop the robot in place
+  geometry_msgs::msg::PointStamped waypoint;
+  waypoint.header.frame_id = "map";
+  waypoint.header.stamp = this->now();
+  waypoint.point.x = robot_position_.x;
+  waypoint.point.y = robot_position_.y;
+  waypoint.point.z = robot_position_.z;
+  waypoint_pub_->publish(waypoint);
   std::cout << "reset waypoint" << std::endl;
 }
 
