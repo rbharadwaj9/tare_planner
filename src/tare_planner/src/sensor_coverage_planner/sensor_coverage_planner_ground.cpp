@@ -365,7 +365,7 @@ SensorCoveragePlanner3D::SensorCoveragePlanner3D()
       use_momentum_(false), lookahead_point_in_line_of_sight_(true),
       reset_waypoint_(false), registered_cloud_count_(0), keypose_count_(0),
       direction_change_count_(0), direction_no_change_count_(0),
-      momentum_activation_count_(0), reset_waypoint_joystick_axis_value_(1.0) {
+      momentum_activation_count_(0), reset_waypoint_joystick_axis_value_(-1.0) {
   std::cout << "finished constructor" << std::endl;
 }
 
