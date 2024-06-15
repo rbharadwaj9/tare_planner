@@ -21,16 +21,16 @@ TAREVisualizer::TAREVisualizer(ros::NodeHandle& nh, ros::NodeHandle& nh_private)
   local_path_publisher_ = nh.advertise<nav_msgs::Path>("tare_visualizer/local_path", 1);
 
   global_subspaces_marker_ =
-      std::make_shared<misc_utils_ns::Marker>(nh, "tare_visualizer/exploring_subspaces", kWorldFrameID);
+      std::make_shared<misc_utils_ns::Marker>(nh, "tare_visualizer/exploring_subspaces", worldFrameID);
   local_planning_horizon_marker_ =
-      std::make_shared<misc_utils_ns::Marker>(nh, "tare_visualizer/local_planning_horizon", kWorldFrameID);
+      std::make_shared<misc_utils_ns::Marker>(nh, "tare_visualizer/local_planning_horizon", worldFrameID);
 
   uncovered_surface_point_cloud_ = std::make_shared<pointcloud_utils_ns::PCLCloud<pcl::PointXYZI>>(
-      nh, "tare_visualizer/uncovered_surface_points", kWorldFrameID);
+      nh, "tare_visualizer/uncovered_surface_points", worldFrameID);
   viewpoint_candidate_cloud_ = std::make_shared<pointcloud_utils_ns::PCLCloud<pcl::PointXYZI>>(
-      nh, "tare_visualizer/viewpoint_candidates", kWorldFrameID);
+      nh, "tare_visualizer/viewpoint_candidates", worldFrameID);
   viewpoint_cloud_ =
-      std::make_shared<pointcloud_utils_ns::PCLCloud<pcl::PointXYZI>>(nh, "tare_visualizer/viewpoints", kWorldFrameID);
+      std::make_shared<pointcloud_utils_ns::PCLCloud<pcl::PointXYZI>>(nh, "tare_visualizer/viewpoints", worldFrameID);
 
   InitializeMarkers();
 }
@@ -63,6 +63,7 @@ bool TAREVisualizer::ReadParameters(ros::NodeHandle& nh)
   kLocalPlanningHorizonSizeX = viewpoint_num_x * viewpoint_resolution_x;
   kLocalPlanningHorizonSizeY = viewpoint_num_y * viewpoint_resolution_y;
   kLocalPlanningHorizonSizeZ = misc_utils_ns::getParam<double>(nh, "kLocalPlanningHorizonHeight", 3.0);
+  worldFrameID = misc_utils_ns::getParam<std::string>(nh, "world_frame", "map");
   return true;
 }
 

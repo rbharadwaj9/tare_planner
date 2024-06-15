@@ -20,20 +20,19 @@ kRushHome : true
 kUseTerrainHeight : true
 kCheckTerrainCollision : true
 kExtendWayPoint : true
-kUseLineOfSightLookAheadPoint : true
+kUseLineOfSightLookAheadPoint : false 
 kNoExplorationReturnHome : true
 kExtendWayPointDistanceBig : 8.0
-kExtendWayPointDistanceSmall : 4.5
+kExtendWayPointDistanceSmall : 3.5
 kKeyposeCloudDwzFilterLeafSize : 0.2
 kRushHomeDist : 10
 kAtHomeDistThreshold : 0.5
 kTerrainCollisionThreshold : 0.5
 kLookAheadDistance : 8
 kUseMomentum : false 
-kDirectionChangeCounterThr : 6
+kDirectionChangeCounterThr : 6 
 kDirectionNoChangeCounterThr : 5
-kResetWaypointJoystickButton : 0
-
+kResetWaypointJoystickAxesID : 2
 
 # PlanningEnv
 kUseFrontier : true
@@ -93,7 +92,7 @@ kViewPointHeightFromTerrainChangeThreshold : 0.6
 kCheckDynamicObstacleCollision : false
 kCollisionFrameCountMax : 3
 
-kSensorRange : 12.0
+kSensorRange : 15.0
 kNeighborRange : 3.0
 kCoverageOcclusionThr : 0.3
 kCoverageDilationRadius : 1.0
@@ -106,7 +105,7 @@ kGridWorldCellHeight : 3.0
 kGridWorldNearbyGridNum : 5
 kMinAddPointNumSmall : 40
 kMinAddPointNumBig : 60
-kMinAddFrontierPointNum : 15
+kMinAddFrontierPointNum : 20
 kCellExploringToCoveredThr : 1
 kCellCoveredToExploringThr: 10
 kCellExploringToAlmostCoveredThr: 10
