@@ -5,9 +5,10 @@
     <arg name="rviz" default="true"/>
     <arg name="use_boundary" default="false"/>
     <arg name="world_frame" default="map"/>
+    <arg name="scenario" default="rss"/>
 
     <include file="$(find tare_planner)/launch/explore.launch">
-        <arg name="scenario" value="rss"/>
+        <arg name="scenario" value="$(arg scenario)"/>
         <arg name="rosbag_record" value="$(arg rosbag_record)"/>
         <arg name="bag_path" value="$(arg bag_path)"/>
         <arg name="bag_name_prefix" value="$(arg bag_name_prefix)"/>
