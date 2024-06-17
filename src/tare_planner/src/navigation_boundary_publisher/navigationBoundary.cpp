@@ -19,6 +19,7 @@ string boundary_file_dir;
 bool sendBoundary = true;
 int sendBoundaryInterval = 2;
 int sendBoundaryCount = 0;
+std::string world_frame = "map";
 
 pcl::PointCloud<pcl::PointXYZ>::Ptr boundary(new pcl::PointCloud<pcl::PointXYZ>());
 
@@ -95,10 +96,11 @@ int main(int argc, char** argv)
   nhPrivate.getParam("boundary_file_dir", boundary_file_dir);
   nhPrivate.getParam("sendBoundary", sendBoundary);
   nhPrivate.getParam("sendBoundaryInterval", sendBoundaryInterval);
+  nhPrivate.getParam("world_frame", world_frame);
 
   ros::Publisher pubBoundary = nh.advertise<geometry_msgs::PolygonStamped>("/navigation_boundary", 5);
   geometry_msgs::PolygonStamped boundaryMsgs;
-  boundaryMsgs.header.frame_id = "map";
+  boundaryMsgs.header.frame_id = world_frame;
 
   // read boundary from file
   if (sendBoundary)
