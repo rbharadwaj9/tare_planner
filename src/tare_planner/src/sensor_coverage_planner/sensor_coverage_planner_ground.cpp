@@ -1471,6 +1471,10 @@ void SensorCoveragePlanner3D::execute() {
   if (!initialized_) {
     SendInitialWaypoint();
     start_time_ = this->now().seconds();
+    if(start_time_ == 0.0){
+      RCLCPP_ERROR(this->get_logger(), "Start time is zero, time source (use_time_time) not set correctly. Exiting...");
+      exit(1);
+    }
     global_direction_switch_time_ = this->now().seconds();
     initialized_ = true;
     return;

@@ -8,6 +8,11 @@ from launch.launch_description_sources import PythonLaunchDescriptionSource
 
 
 def generate_launch_description():
+    use_sim_time_arg = DeclareLaunchArgument(
+        'use_sim_time',
+        default_value='true',
+        description='Use simulated time (true/false)') 
+
     rviz_arg = DeclareLaunchArgument(
         'rviz',
         default_value='true',
@@ -22,6 +27,7 @@ def generate_launch_description():
         PythonLaunchDescriptionSource(
             [get_package_share_directory('tare_planner'), '/explore.launch']),
         launch_arguments={
+            'use_sim_time': LaunchConfiguration('use_sim_time'),
             'scenario': 'campus',
             'rviz': LaunchConfiguration('rviz')
         }.items())
@@ -40,6 +46,7 @@ def generate_launch_description():
         condition=IfCondition(LaunchConfiguration('use_boundary')))
 
     return LaunchDescription([
+        use_sim_time_arg,
         rviz_arg,
         use_boundary_arg,
         explore_launch,
