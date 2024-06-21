@@ -13,6 +13,17 @@ set(BUILD_STATIC_LIBS ON)
 set(BUILD_SHARED_LIBS OFF)
 set(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake)
 
+### depending on architecture choose different or-tools path
+if(CMAKE_SYSTEM_PROCESSOR MATCHES "amd64|x86_64")
+  message(WARNING "Use or-tools for amd64 architecture")
+  set(OR_TOOLS_VERSION amd)
+elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64|arm64")
+  message(WARNING "Use or-tools for arm64 architecture")
+  set(OR_TOOLS_VERSION arm)
+else()
+  message(FATAL_ERORR "Unknown architecture, please specify a valid target architecture")
+endif()
+
 ## Find catkin macros and libraries
 find_package(catkin REQUIRED COMPONENTS
   nav_msgs
@@ -38,7 +49,7 @@ include_directories(
   ${catkin_INCLUDE_DIRS}
   ${PCL_INCLUDE_DIRS}
   "${PROJECT_SOURCE_DIR}/include"
-  or-tools/include
+  or-tools/${OR_TOOLS_VERSION}/include
   ${EIGEN3_INCLUDE_DIR}
   /opt/nea/topaz/include
 )
@@ -47,7 +58,7 @@ include_directories(
 link_directories(
   /usr/local/lib # Location when using 'make system_install'
   /usr/lib       # More usual location (e.g. when installing using a package)
-  or-tools/lib
+  or-tools/${OR_TOOLS_VERSION}/lib
 )
 
 add_library(lidar_model src/lidar_model/lidar_model.cpp)
@@ -68,7 +79,7 @@ target_link_libraries(pointcloud_utils ${catkin_LIBRARIES} ${PCL_LIBRARIES})
 
 add_library(tsp_solver src/tsp_solver/tsp_solver.cpp)
 add_dependencies(tsp_solver ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
-target_link_libraries(tsp_solver ${catkin_LIBRARIES} ${CMAKE_CURRENT_SOURCE_DIR}/or-tools/lib/libortools.so)
+target_link_libraries(tsp_solver ${catkin_LIBRARIES} ${CMAKE_CURRENT_SOURCE_DIR}/or-tools/${OR_TOOLS_VERSION}/lib/libortools.so)
 
 add_library(viewpoint src/viewpoint/viewpoint.cpp)
 add_dependencies(viewpoint ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
