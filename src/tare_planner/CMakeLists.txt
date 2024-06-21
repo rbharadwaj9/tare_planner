@@ -15,6 +15,17 @@ if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
   add_compile_options(-Wall -Wextra -Wpedantic)
 endif()
 
+### depending on architecture choose different or-tools path
+if(CMAKE_SYSTEM_PROCESSOR MATCHES "amd64|x86_64")
+  message(WARNING "Use or-tools for amd64 architecture")
+  set(OR_TOOLS_VERSION amd)
+elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64|arm64")
+  message(WARNING "Use or-tools for arm64 architecture")
+  set(OR_TOOLS_VERSION arm)
+else()
+  message(FATAL_ERORR "Unknown architecture, please specify a valid target architecture")
+endif()
+
 find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(std_msgs REQUIRED)
@@ -34,7 +45,7 @@ find_package(Eigen3 REQUIRED)
   ${catkin_INCLUDE_DIRS}
   ${PCL_INCLUDE_DIRS}
   include
-  or-tools/include
+  or-tools/${OR_TOOLS_VERSION}/include
   ${EIGEN3_INCLUDE_DIR}
   /opt/ros/humble/include
   # /usr/local/include
@@ -46,11 +57,17 @@ foreach(dir ${dirs})
   message(STATUS "dir='${dir}'")
 endforeach()
 
+link_directories(
+  /usr/local/lib # Location when using 'make system_install'
+  /usr/lib       # More usual location (e.g. when installing using a package)
+  or-tools/${OR_TOOLS_VERSION}/lib
+)
+
 # ## Specify additional locations for library files
 # link_directories(
 #   /usr/local/lib # Location when using 'make system_install'
 #   /usr/lib       # More usual location (e.g. when installing using a package)
-#   or-tools/lib
+#   or-tools/${OR_TOOLS_VERSION}/lib
 # )
 
 add_library(lidar_model src/lidar_model/lidar_model.cpp)
@@ -71,7 +88,7 @@ ament_target_dependencies(pointcloud_utils rclcpp std_msgs nav_msgs geometry_msg
 
 add_library(tsp_solver src/tsp_solver/tsp_solver.cpp)
 ament_target_dependencies(tsp_solver rclcpp std_msgs nav_msgs geometry_msgs sensor_msgs tf2_ros tf2_geometry_msgs tf2)
-target_link_libraries(tsp_solver ${catkin_LIBRARIES} ${CMAKE_CURRENT_SOURCE_DIR}/or-tools/lib/libortools.so)
+target_link_libraries(tsp_solver ${catkin_LIBRARIES} ${CMAKE_CURRENT_SOURCE_DIR}/or-tools/${OR_TOOLS_VERSION}/lib/libortools.so)
 
 add_library(viewpoint src/viewpoint/viewpoint.cpp)
 ament_target_dependencies(viewpoint rclcpp std_msgs nav_msgs geometry_msgs sensor_msgs tf2_ros tf2_geometry_msgs tf2)
