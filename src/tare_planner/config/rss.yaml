@@ -93,7 +93,7 @@ kViewPointHeightFromTerrainChangeThreshold : 0.6
 kCheckDynamicObstacleCollision : false
 kCollisionFrameCountMax : 3
 
-kSensorRange : 7.5
+kSensorRange : 3
 kNeighborRange : 3.0
 kCoverageOcclusionThr : 0.3
 kCoverageDilationRadius : 0.5

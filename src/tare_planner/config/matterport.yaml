@@ -24,7 +24,7 @@ kUseLineOfSightLookAheadPoint : true
 kNoExplorationReturnHome : true
 kExtendWayPointDistanceBig : 4.0
 kExtendWayPointDistanceSmall : 1.5
-kKeyposeCloudDwzFilterLeafSize : 0.05
+kKeyposeCloudDwzFilterLeafSize : 0.2
 kRushHomeDist : 3
 kAtHomeDistThreshold : 0.5
 kTerrainCollisionThreshold : 0.3
@@ -48,7 +48,7 @@ rolling_occupancy_grid/resolution_y : 0.2
 rolling_occupancy_grid/resolution_z : 0.2
 
 kSurfaceCloudDwzLeafSize : 0.4
-kCollisionCloudDwzLeafSize : 0.05
+kCollisionCloudDwzLeafSize : 0.2
 kKeyposeGraphCollisionCheckRadius : 0.15
 kKeyposeGraphCollisionCheckPointNumThr : 1
 kKeyposeCloudStackNum : 5
