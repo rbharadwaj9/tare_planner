@@ -7,15 +7,29 @@ from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch_ros.actions import Node, SetParameter
 
 
-def launch_tare_node(context, scenario):
+# def launch_tare_node(context, scenario):
+#     scenario_str = str(scenario.perform(context))
+#     tare_planner_node = Node(
+#         package='tare_planner',
+#         executable='tare_planner_node',
+#         name='tare_planner_node',
+#         output='screen',
+#         # namespace='sensor_coverage_planner',
+#         parameters=[get_package_share_directory('tare_planner')+'/' + scenario_str + '.yaml'])
+#     return [tare_planner_node]
+
+def launch_tare_node(context, scenario, use_sim_time):
     scenario_str = str(scenario.perform(context))
+    use_sim_time_val = use_sim_time.perform(context)
+
     tare_planner_node = Node(
         package='tare_planner',
         executable='tare_planner_node',
-        name='tare_planner_node',
-        output='screen',
-        # namespace='sensor_coverage_planner',
-        parameters=[get_package_share_directory('tare_planner')+'/' + scenario_str + '.yaml'])
+        parameters=[
+            { 'use_sim_time': use_sim_time_val },        # <- ensure it wins
+            get_package_share_directory('tare_planner')+'/'+scenario_str+'.yaml'
+        ]
+    )
     return [tare_planner_node]
 
 
@@ -50,8 +64,8 @@ def generate_launch_description():
     return LaunchDescription([
         declare_use_sim_time_cmd,
         declare_scenario,
-        SetParameter(name='use_sim_time', value=use_sim_time),
+        SetParameter(name='use_sim_time', value='true'),
         declare_rviz,
         GroupAction([rviz_node]),
-        OpaqueFunction(function=launch_tare_node, args=[scenario])
+        OpaqueFunction(function=launch_tare_node, args=[scenario, use_sim_time])
     ])

@@ -22,7 +22,7 @@ namespace sensor_coverage_planner_3d_ns {
 // {
 // }
 
-// bool PlannerParameters::ReadParameters(rclcpp::Node::SharedPtr node_)
+
 void SensorCoveragePlanner3D::ReadParameters() {
   this->declare_parameter<std::string>("sub_start_exploration_topic_",
                                        "/exploration_start");
@@ -232,6 +232,13 @@ void SensorCoveragePlanner3D::ReadParameters() {
                       kDirectionNoChangeCounterThr);
   this->get_parameter("kResetWaypointJoystickAxesID",
                       kResetWaypointJoystickAxesID);
+
+
+  // this->declare_parameter<bool>("use_sim_time", false);
+  bool use_sim_time = false;
+  this->get_parameter("use_sim_time", use_sim_time);
+  rclcpp::Parameter sim_time_param("use_sim_time", use_sim_time);
+  this->set_parameter(sim_time_param);
 }
 
 // PlannerData::PlannerData()
@@ -1471,7 +1478,7 @@ void SensorCoveragePlanner3D::execute() {
   if (!initialized_) {
     SendInitialWaypoint();
     start_time_ = this->now().seconds();
-    if(start_time_ == 0.0){
+    if(start_time_ == 0.0 && !get_parameter("use_sim_time").as_bool()){
       RCLCPP_ERROR(this->get_logger(), "Start time is zero, time source (use_time_time) not set correctly. Exiting...");
       exit(1);
     }
