@@ -12,6 +12,8 @@
 #include "sensor_coverage_planner/sensor_coverage_planner_ground.h"
 #include "graph/graph.h"
 #include <memory>
+#include <rclcpp/logger.hpp>
+#include <rclcpp/logging.hpp>
 #include <tf2/LinearMath/Matrix3x3.h>
 #include <tf2/LinearMath/Quaternion.h>
 
@@ -61,6 +63,7 @@ void SensorCoveragePlanner3D::ReadParameters() {
   this->declare_parameter<bool>("kUseLineOfSightLookAheadPoint", true);
   this->declare_parameter<bool>("kNoExplorationReturnHome", true);
   this->declare_parameter<bool>("kUseMomentum", false);
+  this->declare_parameter<bool>("etGoHome", false);
 
   // Double
   this->declare_parameter<double>("kKeyposeCloudDwzFilterLeafSize", 0.2);
@@ -394,6 +397,8 @@ bool SensorCoveragePlanner3D::initialize() {
 
   execution_timer_ = this->create_wall_timer(
       1000ms, std::bind(&SensorCoveragePlanner3D::execute, this));
+  go_home_timer_ = this->create_wall_timer(
+      5000ms, std::bind(&SensorCoveragePlanner3D::pollHome, this));
 
   exploration_start_sub_ = this->create_subscription<std_msgs::msg::Bool>(
       sub_start_exploration_topic_, 5,
@@ -1462,6 +1467,16 @@ void SensorCoveragePlanner3D::CountDirectionChange() {
   momentum_activation_count_pub_->publish(momentum_activation_count_msg);
 }
 
+void SensorCoveragePlanner3D::pollHome() {
+  RCLCPP_INFO(this->get_logger(), "Checking going home");
+
+  bool goHomeLatest;
+  this->get_parameter("etGoHome",
+                      goHomeLatest);
+  RCLCPP_INFO_STREAM(this->get_logger(), "Going Home Value: " << goHomeLatest << " explr fin: " << exploration_finished_);
+  this->exploration_finished_ |= goHomeLatest;
+}
+
 void SensorCoveragePlanner3D::execute() {
   if (!kAutoStart && !start_exploration_) {
     RCLCPP_INFO(this->get_logger(), "Waiting for start signal");
@@ -1548,7 +1563,7 @@ void SensorCoveragePlanner3D::execute() {
 
     if (exploration_finished_ && at_home_ && !stopped_) {
       PrintExplorationStatus("Return home completed", false);
-      stopped_ = true; 
+      stopped_ = true;
 
     }
 

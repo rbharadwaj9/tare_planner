@@ -69,6 +69,7 @@ public:
   explicit SensorCoveragePlanner3D();
   bool initialize();
   void execute();
+  void pollHome();
   ~SensorCoveragePlanner3D() = default;
 
 private:
@@ -212,6 +213,7 @@ private:
   double reset_waypoint_joystick_axis_value_;
 
   rclcpp::TimerBase::SharedPtr execution_timer_;
+  rclcpp::TimerBase::SharedPtr go_home_timer_;
 
   // ROS subscribers
   rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr exploration_start_sub_;

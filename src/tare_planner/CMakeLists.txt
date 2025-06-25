@@ -150,9 +150,13 @@ target_link_libraries(tare_planner_node ${catkin_LIBRARIES} sensor_coverage_plan
 ## Install ##
 #############
 
+add_executable(go_home_caller_node src/utils/go_home_caller.cpp)
+ament_target_dependencies(go_home_caller_node rclcpp)
+
 install(TARGETS
   navigationBoundary
   tare_planner_node
+  go_home_caller_node
   DESTINATION lib/${PROJECT_NAME})
 
 install(DIRECTORY launch/
