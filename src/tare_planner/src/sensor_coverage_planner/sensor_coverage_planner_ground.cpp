@@ -1548,8 +1548,14 @@ void SensorCoveragePlanner3D::execute() {
 
     if (exploration_finished_ && at_home_ && !stopped_) {
       PrintExplorationStatus("Return home completed", false);
-      stopped_ = true;
+      stopped_ = true; 
+
     }
+
+    // if (!exploration_finished_ && (current_time - start_time_) > 300) {
+    //   PrintExplorationStatus("Time limit reached, returning home", false);
+    //   exploration_finished_ = true;
+    // }
 
     exploration_path_ = ConcatenateGlobalLocalPath(global_path, local_path);
 

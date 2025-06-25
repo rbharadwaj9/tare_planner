@@ -20,21 +20,25 @@ tare_planner_node:
 
     kAutoStart : true
     kRushHome : true
-    kUseTerrainHeight : false
+    # debug
+    kUseTerrainHeight : true #false
     kCheckTerrainCollision : true
+    # Debug 3
     kExtendWayPoint : true
     kUseLineOfSightLookAheadPoint : true
     kNoExplorationReturnHome : true
-    kExtendWayPointDistanceBig : 8.0
-    kExtendWayPointDistanceSmall : 3.5
-    kKeyposeCloudDwzFilterLeafSize : 0.2
-    kRushHomeDist : 5.0
+    kExtendWayPointDistanceBig : 4.0 #8.0
+    kExtendWayPointDistanceSmall : 2.0 #3.5
+    kKeyposeCloudDwzFilterLeafSize : 0.5
+    kRushHomeDist : 1.5 # 5.0
     kAtHomeDistThreshold : 0.5
-    kTerrainCollisionThreshold : 0.5
-    kLookAheadDistance : 8.0
-    kUseMomentum : false 
-    kDirectionChangeCounterThr : 6
-    kDirectionNoChangeCounterThr : 5
+    # Debug
+    kTerrainCollisionThreshold : 0.8 #0.5 
+    kLookAheadDistance : 4.0 # 8.0
+    kUseMomentum : false
+    # Debug 2 
+    kDirectionChangeCounterThr : 8 #6
+    kDirectionNoChangeCounterThr : 3 #5
     kResetWaypointJoystickAxesID : 2
 
     # PlanningEnv
@@ -45,12 +49,12 @@ tare_planner_node:
     kUseCoverageBoundaryOnObjectSurface : false
 
     # Rolling occupancy grid
-    rolling_occupancy_grid/resolution_x : 0.3
-    rolling_occupancy_grid/resolution_y : 0.3
-    rolling_occupancy_grid/resolution_z : 0.3
+    rolling_occupancy_grid/resolution_x : 0.5 #0.3
+    rolling_occupancy_grid/resolution_y : 0.5 #0.3
+    rolling_occupancy_grid/resolution_z : 0.5 #0.3
 
-    kSurfaceCloudDwzLeafSize : 0.3
-    kCollisionCloudDwzLeafSize : 0.2
+    kSurfaceCloudDwzLeafSize : 1.0 #0.3
+    kCollisionCloudDwzLeafSize : 0.5 # 0.3
     kKeyposeCloudStackNum : 5
     kPointCloudRowNum : 50
     kPointCloudColNum : 50
@@ -68,35 +72,37 @@ tare_planner_node:
     keypose_graph/kAddEdgeToLastKeyposeDistThr : 3.0
     keypose_graph/kAddEdgeVerticalThreshold : 1.0
     keypose_graph/kAddEdgeCollisionCheckResolution : 0.4
-    keypose_graph/kAddEdgeCollisionCheckRadius : 0.4
+    # Debug 2
+    keypose_graph/kAddEdgeCollisionCheckRadius : 1.0 #0.4
     keypose_graph/kAddEdgeCollisionCheckPointNumThr : 1
 
     # ViewPointManager
     viewpoint_manager/number_x : 50
     viewpoint_manager/number_y : 50
     viewpoint_manager/number_z : 1
-    viewpoint_manager/resolution_x : 0.6
-    viewpoint_manager/resolution_y : 0.6
+    viewpoint_manager/resolution_x : 0.8 #0.6
+    viewpoint_manager/resolution_y : 0.8 #0.6
     viewpoint_manager/resolution_z : 0.0
     kConnectivityHeightDiffThr : 0.25
     kGreedyViewPointSampleRange : 3
     kLocalPathOptimizationItrMax : 10
-    kViewPointCollisionMargin : 0.5
-    kViewPointCollisionMarginZPlus : 0.5
-    kViewPointCollisionMarginZMinus : 0.5
+    # Debug
+    kViewPointCollisionMargin : 1.0 #0.5
+    kViewPointCollisionMarginZPlus : 1.0 #0.5
+    kViewPointCollisionMarginZMinus : 1.0 #0.5
     kCollisionGridZScale : 1.0
-    kCollisionGridResolutionX : 0.2
-    kCollisionGridResolutionY : 0.2
+    kCollisionGridResolutionX : 0.1 # 0.2
+    kCollisionGridResolutionY : 0.1 #0.2
     kCollisionGridResolutionZ : 0.0
     kCollisionPointThr : 1
-    kLineOfSightStopAtNearestObstacle : false
+    kLineOfSightStopAtNearestObstacle : true #false
     kViewPointHeightFromTerrain : 0.75
     kViewPointHeightFromTerrainChangeThreshold : 0.6
     kCheckDynamicObstacleCollision : false
     kCollisionFrameCountMax : 3
-
-    kSensorRange : 7.5
-    kNeighborRange : 3.0
+    # Debug
+    kSensorRange : 3.0 #7.5
+    kNeighborRange : 1.0 # 3.0        
     kCoverageOcclusionThr : 0.3
     kCoverageDilationRadius : 0.5
 
