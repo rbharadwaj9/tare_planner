@@ -70,6 +70,7 @@ public:
   bool initialize();
   void execute();
   void pollHome();
+  void setHome();
   ~SensorCoveragePlanner3D() = default;
 
 private:
@@ -214,6 +215,7 @@ private:
 
   rclcpp::TimerBase::SharedPtr execution_timer_;
   rclcpp::TimerBase::SharedPtr go_home_timer_;
+  rclcpp::TimerBase::SharedPtr go_home_setter_;
 
   // ROS subscribers
   rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr exploration_start_sub_;

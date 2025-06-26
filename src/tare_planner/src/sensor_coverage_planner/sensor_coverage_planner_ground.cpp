@@ -399,6 +399,8 @@ bool SensorCoveragePlanner3D::initialize() {
       1000ms, std::bind(&SensorCoveragePlanner3D::execute, this));
   go_home_timer_ = this->create_wall_timer(
       5000ms, std::bind(&SensorCoveragePlanner3D::pollHome, this));
+  go_home_setter_ = this->create_wall_timer(
+      600s, std::bind(&SensorCoveragePlanner3D::setHome, this));
 
   exploration_start_sub_ = this->create_subscription<std_msgs::msg::Bool>(
       sub_start_exploration_topic_, 5,
@@ -1480,6 +1482,15 @@ void SensorCoveragePlanner3D::pollHome() {
   	this->exploration_finished_ |= goHomeLatest;
   	// this->exploration_finished_ |= goHomeLatest;
   }
+}
+
+void SensorCoveragePlanner3D::setHome() {
+  RCLCPP_INFO(this->get_logger(), "Setting Going Home");
+
+  rclcpp::Parameter param("etGoHome", true);
+  this->set_parameter(param);
+
+  RCLCPP_INFO(this->get_logger(), "Parameter 'etGoHome' has been set to true.");
 }
 
 void SensorCoveragePlanner3D::execute() {
