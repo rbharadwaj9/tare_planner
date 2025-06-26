@@ -994,6 +994,7 @@ SensorCoveragePlanner3D::ConcatenateGlobalLocalPath(
     const exploration_path_ns::ExplorationPath &local_path) {
   exploration_path_ns::ExplorationPath full_path;
   if (exploration_finished_ && near_home_ && kRushHome) {
+    RCLCPP_INFO_STREAM(this->get_logger(), "Actually going home");
     exploration_path_ns::Node node;
     node.position_.x() = robot_position_.x;
     node.position_.y() = robot_position_.y;
@@ -1474,7 +1475,11 @@ void SensorCoveragePlanner3D::pollHome() {
   this->get_parameter("etGoHome",
                       goHomeLatest);
   RCLCPP_INFO_STREAM(this->get_logger(), "Going Home Value: " << goHomeLatest << " explr fin: " << exploration_finished_);
-  this->exploration_finished_ |= goHomeLatest;
+  if (goHomeLatest) {
+	// this->near_home_ |= goHomeLatest;
+  	this->exploration_finished_ |= goHomeLatest;
+  	// this->exploration_finished_ |= goHomeLatest;
+  }
 }
 
 void SensorCoveragePlanner3D::execute() {

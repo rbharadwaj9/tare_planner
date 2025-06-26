@@ -30,7 +30,7 @@ tare_planner_node:
     kExtendWayPointDistanceBig : 4.0 #8.0
     kExtendWayPointDistanceSmall : 2.0 #3.5
     kKeyposeCloudDwzFilterLeafSize : 0.5
-    kRushHomeDist : 1.5 # 5.0
+    kRushHomeDist : 30.0 # 5.0
     kAtHomeDistThreshold : 0.5
     # Debug
     kTerrainCollisionThreshold : 0.8 #0.5 
