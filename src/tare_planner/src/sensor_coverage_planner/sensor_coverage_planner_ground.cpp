@@ -400,7 +400,7 @@ bool SensorCoveragePlanner3D::initialize() {
   go_home_timer_ = this->create_wall_timer(
       5000ms, std::bind(&SensorCoveragePlanner3D::pollHome, this));
   go_home_setter_ = this->create_wall_timer(
-      600s, std::bind(&SensorCoveragePlanner3D::setHome, this));
+      480s, std::bind(&SensorCoveragePlanner3D::setHome, this));
 
   exploration_start_sub_ = this->create_subscription<std_msgs::msg::Bool>(
       sub_start_exploration_topic_, 5,
